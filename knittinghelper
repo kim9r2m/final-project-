@@ -1,0 +1,266 @@
+# knitting_crochet_helper_app.py
+# Streamlit app: Knitting & Crochet Helper
+# Features:
+# 1) AI Helper: Chatbot specialized in knitting & crochet using OpenAI (user provides API key)
+# 2) Color combination helper: user supplies keyword; app generates color palette using a stable hex derived from the keyword and TheColorAPI (no API key required)
+# 3) Animal pattern design helper: shows dog & cat images (no API key), user chooses one and converts to a pixel (graph-paper style) pattern image for download
+
+import streamlit as st
+import requests
+import hashlib
+import io
+from PIL import Image, ImageDraw, ImageFont
+import numpy as np
+import os
+
+# Optional: OpenAI
+try:
+    import openai
+    OPENAI_AVAILABLE = True
+except Exception:
+    OPENAI_AVAILABLE = False
+
+st.set_page_config(page_title="Knitting & Crochet Helper", layout="wide")
+
+SYSTEM_PROMPT = (
+    "You are a master of knitting and crochet. You understand yarn types, stitch techniques, and garment construction. "
+    "You teach people how to improve their craft, offering detailed guidance about patterns, texture combinations, "
+    "and project planning. Use a warm, encouraging, and patient tone. Give tips about tools, color palettes, "
+    "and creative inspiration for both beginners and experienced crafters."
+)
+
+# Helper: hash keyword -> hex color
+def keyword_to_hex(keyword: str) -> str:
+    h = hashlib.md5(keyword.encode('utf-8')).hexdigest()
+    return h[:6]
+
+# Fetch color scheme from TheColorAPI (no API key required)
+def fetch_palette_from_hex(hexcode: str, mode: str = 'analogic', count: int = 5):
+    url = f'https://www.thecolorapi.com/scheme?hex={hexcode}&mode={mode}&count={count}'
+    resp = requests.get(url, timeout=10)
+    resp.raise_for_status()
+    data = resp.json()
+    colors = [c['hex']['value'] for c in data.get('colors', [])]
+    return colors
+
+# Fetch example animal images (no API key)
+# Dog: dog.ceo; Cat: cataas
+
+def fetch_dog_images(limit=4):
+    url = 'https://dog.ceo/api/breeds/image/random/' + str(limit)
+    r = requests.get(url, timeout=10)
+    r.raise_for_status()
+    return r.json().get('message', [])
+
+def fetch_cat_images(limit=4):
+    # Cataas supports simple endpoints; to get multiple images we'll request different sizes
+    urls = [f'https://cataas.com/cat?type=png&{i}' for i in range(limit)]
+    return urls
+
+# Convert image to pixel pattern (graph paper style)
+def convert_to_pixel_pattern(img_bytes: bytes, pixel_size: int = 20, grid_line_width: int = 1, show_hex=False):
+    # Open image
+    img = Image.open(io.BytesIO(img_bytes)).convert('RGB')
+    # Create square crop preserving center
+    w, h = img.size
+    s = min(w, h)
+    left = (w - s)//2
+    top = (h - s)//2
+    img = img.crop((left, top, left+s, top+s))
+
+    # Resize to pixel resolution
+    small = img.resize((pixel_size, pixel_size), resample=Image.BILINEAR)
+
+    # Create poster image: each cell is cell_px x cell_px, with grid lines
+    cell_px = 24  # base cell size; final size = pixel_size * cell_px
+    canvas_size = pixel_size * cell_px + grid_line_width
+    poster = Image.new('RGB', (canvas_size, canvas_size), 'white')
+    draw = ImageDraw.Draw(poster)
+
+    # Draw cells
+    for y in range(pixel_size):
+        for x in range(pixel_size):
+            color = small.getpixel((x, y))
+            x0 = x * cell_px + grid_line_width
+            y0 = y * cell_px + grid_line_width
+            x1 = x0 + cell_px - grid_line_width
+            y1 = y0 + cell_px - grid_line_width
+            draw.rectangle([x0, y0, x1, y1], fill=color)
+
+    # Draw graph-paper grid lines
+    for i in range(pixel_size + 1):
+        pos = i * cell_px
+        # vertical
+        draw.line([(pos,0),(pos,canvas_size)], fill=(0,0,0), width=grid_line_width)
+        # horizontal
+        draw.line([(0,pos),(canvas_size,pos)], fill=(0,0,0), width=grid_line_width)
+
+    # Optionally annotate hex codes inside each cell (small font)
+    if show_hex:
+        try:
+            font = ImageFont.load_default()
+        except Exception:
+            font = None
+        for y in range(pixel_size):
+            for x in range(pixel_size):
+                color = small.getpixel((x, y))
+                hexc = '#%02x%02x%02x' % color
+                x0 = x * cell_px + 3
+                y0 = y * cell_px + 3
+                draw.text((x0, y0), hexc, fill='black' if sum(color) > 300 else 'white', font=font)
+
+    return poster
+
+# --- Streamlit UI ---
+st.title("🧶 Knitting & Crochet Helper")
+
+tabs = st.tabs(["AI Helper", "Color combination helper", "Animal pattern design helper"])
+
+# --- Tab 1: AI Helper ---
+with tabs[0]:
+    st.header("AI Helper — Knitting & Crochet Expert")
+    st.write("A friendly chatbot specialized in knitting & crochet. Enter your OpenAI API key below (or set OPENAI_API_KEY environment variable). If you hit a 403 error, check your key and billing or paste the key here.")
+
+    api_key_input = st.text_input("OpenAI API key (optional)", type="password")
+    if api_key_input:
+        os.environ['OPENAI_API_KEY'] = api_key_input
+
+    if not OPENAI_AVAILABLE:
+        st.warning("openai package not found. Install the 'openai' Python package to enable AI chat. See requirements.txt.")
+
+    # Chat history stored in session state
+    if 'messages' not in st.session_state:
+        st.session_state.messages = [
+            {"role": "system", "content": SYSTEM_PROMPT}
+        ]
+
+    with st.form("chat_form", clear_on_submit=True):
+        user_msg = st.text_area("Your question", height=120)
+        submitted = st.form_submit_button("Send")
+
+    if submitted and user_msg.strip():
+        st.session_state.messages.append({"role": "user", "content": user_msg})
+        if OPENAI_AVAILABLE:
+            try:
+                openai.api_key = os.environ.get('OPENAI_API_KEY')
+                if not openai.api_key:
+                    st.error("No OpenAI API key found. Please set OPENAI_API_KEY or paste it above.")
+                else:
+                    # Use ChatCompletion; user can change model if desired
+                    completion = openai.ChatCompletion.create(
+                        model="gpt-4o-mini",
+                        messages=st.session_state.messages,
+                        max_tokens=800,
+                        temperature=0.8,
+                    )
+                    assistant_reply = completion['choices'][0]['message']['content']
+                    st.session_state.messages.append({"role":"assistant","content":assistant_reply})
+            except openai.error.OpenAIError as e:
+                st.error(f"OpenAI API error: {e}")
+                # keep messages but show error
+        else:
+            st.info("OpenAI is not installed in this environment. To test the UI locally, install the openai package and provide your API key.")
+
+    # Display conversation
+    for msg in st.session_state.messages[1:]:
+        if msg['role'] == 'user':
+            st.markdown(f"**You:** {msg['content']}")
+        else:
+            st.markdown(f"**Expert:** {msg['content']}")
+
+    if st.button("Clear conversation"):
+        st.session_state.messages = [{"role":"system","content":SYSTEM_PROMPT}]
+        st.experimental_rerun()
+
+# --- Tab 2: Color combination helper ---
+with tabs[1]:
+    st.header("Color combination helper")
+    st.write("Type a keyword (project idea, emotion, yarn name) and get suggested color palettes. Palettes are fetched from TheColorAPI (no API key needed).")
+
+    col1, col2 = st.columns([3,1])
+    with col1:
+        keyword = st.text_input("Keyword (e.g. 'autumn sweater', 'baby blanket', 'merino')")
+    with col2:
+        mode = st.selectbox("Palette mode", ['analogic', 'monochrome', 'complement', 'triad', 'tetrad', 'quad'])
+
+    if st.button("Generate palette") and keyword.strip():
+        hexbase = keyword_to_hex(keyword)
+        try:
+            colors = fetch_palette_from_hex(hexbase, mode=mode, count=5)
+            st.write(f"Base hex from keyword: #{hexbase}")
+            cols = st.columns(len(colors))
+            for c, col in zip(colors, cols):
+                col.markdown(f"<div style='background:{c};padding:30px;border-radius:6px'></div>", unsafe_allow_html=True)
+                col.write(c)
+
+            # Export palette as PNG
+            img_w = 100 * len(colors)
+            img_h = 120
+            img = Image.new('RGB', (img_w, img_h), 'white')
+            d = ImageDraw.Draw(img)
+            for i, c in enumerate(colors):
+                d.rectangle([i*100, 0, (i+1)*100, 80], fill=c)
+                d.text((i*100+8, 86), c, fill='black')
+            buf = io.BytesIO()
+            img.save(buf, format='PNG')
+            buf.seek(0)
+            st.download_button("Download palette PNG", data=buf, file_name=f"palette_{keyword.replace(' ','_')}.png", mime='image/png')
+
+        except Exception as e:
+            st.error(f"Failed to fetch palette: {e}")
+
+# --- Tab 3: Animal pattern design helper ---
+with tabs[2]:
+    st.header("Animal pattern design helper")
+    st.write("Choose a dog or cat image (fetched from public no-key APIs), then convert it to a pixel / graph-paper style poster suitable for designing a pixel pattern.")
+
+    animal = st.radio("Animal", ['Dog','Cat'])
+    if animal == 'Dog':
+        try:
+            img_urls = fetch_dog_images(limit=6)
+        except Exception as e:
+            st.error(f"Failed to fetch dog images: {e}")
+            img_urls = []
+    else:
+        img_urls = fetch_cat_images(limit=6)
+
+    if img_urls:
+        cols = st.columns(3)
+        selected_url = None
+        for i, url in enumerate(img_urls):
+            col = cols[i%3]
+            try:
+                col.image(url, width=200)
+                if col.button(f"Select #{i+1}", key=f"sel_{i}"):
+                    selected_url = url
+                    st.session_state['selected_url'] = url
+            except Exception as e:
+                col.write("Failed to load")
+
+        if 'selected_url' in st.session_state:
+            selected_url = st.session_state['selected_url']
+            st.markdown(f"**Selected image:** {selected_url}")
+
+        st.write("---")
+        pixel_size = st.number_input("Pixel (grid) size for pattern (e.g. 20 = 20x20)", min_value=8, max_value=200, value=24, step=1)
+        show_hex = st.checkbox("Annotate hex codes in each cell (slower)")
+
+        if st.button("Convert pixel pattern") and selected_url:
+            try:
+                resp = requests.get(selected_url, timeout=15)
+                resp.raise_for_status()
+                poster = convert_to_pixel_pattern(resp.content, pixel_size, grid_line_width=1, show_hex=show_hex)
+                st.image(poster, caption=f"{pixel_size}x{pixel_size} pattern (graph paper style)")
+                buf = io.BytesIO()
+                poster.save(buf, format='PNG')
+                buf.seek(0)
+                st.download_button("Download pixel pattern PNG", data=buf, file_name=f"pixel_pattern_{animal.lower()}_{pixel_size}x{pixel_size}.png", mime='image/png')
+            except Exception as e:
+                st.error(f"Failed to convert image: {e}")
+    else:
+        st.info("No images available right now.")
+
+# Footer / run instructions
+st.sidebar.header("Run instructions")
+st.sidebar.write("1. Install requirements from requirements.txt.\n2. Run: `streamlit run knitting_crochet_helper_app.py`\n3. (Optional) Provide your OpenAI API key in the AI Helper tab or set OPENAI_API_KEY env var.")
+
