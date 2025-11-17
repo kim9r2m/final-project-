@@ -365,6 +365,7 @@ with tabs[2]:
             st.session_state[key_imgs] = fetch_cat_images(limit=12)
 
     img_urls = st.session_state.get(key_imgs, [])
+    img_urls = [url for url in img_urls if not url.lower().endswith(".gif")] #!!
 
     # Display images and selection buttons in a stable way
     cols = st.columns(3)
