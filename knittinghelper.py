@@ -332,12 +332,17 @@ with tabs[1]:
         st.dataframe(df)
 
     st.markdown("**Palette Modes (short):**")
-    st.markdown("- **pastel**: soft, low-saturation colors.
-- **vibrant**: high saturation and contrast.
-- **earthy**: muted, natural tones.
-- **monochrome**: shades of a single hue.
-- **analogous**: neighboring hues for harmony.
-- **complementary**: opposite hues for contrast.")
+    st.markdown("""
+**Palette Modes**
+
+- **pastel**: soft, low-saturation colors.
+- **vibrant**: bold and strong colors.
+- **earthy**: natural, warm organic tones.
+- **monochrome**: shades and tints of a single hue.
+- **analogous**: colors next to each other on the color wheel.
+- **complementary**: colors opposite on the color wheel.
+""")
+
 
     # Explain input-processing-output for debugging
     if keyword:
