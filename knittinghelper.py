@@ -501,7 +501,7 @@ with tabs[1]:
                             draw.rectangle([x0,y0,x1,y1], fill=bg_color)
                     
                     # 🎯 도형 개수를 팔레트 색상 개수에 맞춤
-                    num_shapes = max(len(colors_list), 5)
+                    num_shapes = max(len(colors_list), 10)
                     placed_positions = []
                     max_attempts = 200
                     attempts = 0
