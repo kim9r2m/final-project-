@@ -359,39 +359,45 @@ with tabs[1]:
         )
         chosen_palette = palettes[chosen_index]
 
+        # Initialize edited palette in session state
+        palette_key = f'edited_palette_{chosen_index}'
+        if palette_key not in st.session_state:
+            st.session_state[palette_key] = chosen_palette.copy()
+
         st.write("Editable palette (you can add/remove/change colors):")
         import pandas as pd
-        editable_df = pd.DataFrame({"color": chosen_palette})
-        edited_df = st.data_editor(editable_df, num_rows="dynamic")
+        
+        # Create DataFrame with color column configured for color picker
+        editable_df = pd.DataFrame({"color": st.session_state[palette_key]})
+        
+        # Use column_config to enable color picker in data_editor
+        edited_df = st.data_editor(
+            editable_df, 
+            num_rows="dynamic",
+            column_config={
+                "color": st.column_config.ColorColumn(
+                    "Color",
+                    help="Click to pick a color",
+                    width="medium"
+                )
+            },
+            hide_index=False,
+            use_container_width=True
+        )
+        
+        # Update session state
+        st.session_state[palette_key] = edited_df['color'].tolist()
 
         # Color preview        
         st.write("Preview Colors:")
-        prev_cols = st.columns(len(edited_df))
-        for c, col in zip(edited_df['color'], prev_cols):
-            col.markdown(f"<div style='background:{c};padding:28px;border-radius:6px;border:1px solid #ddd'></div>", unsafe_allow_html=True)
-            col.write(c)
-
-        # ✨ NEW: Color Picker for adding colors
-        st.write("---")
-        st.write("**Add New Color:**")
-        with st.expander("➕ Add New Color"):
-            col_name, col_picker = st.columns([2, 1])
-            with col_name:
-                new_color_name = st.text_input("Color Name", value="", key="new_color_name")
-            with col_picker:
-                picked_color = st.color_picker("Pick a Color", value="#5DADE2", key="color_picker")
-            
-            if st.button("Add Color"):
-                if picked_color:
-                    # Add to dataframe
-                    new_row = pd.DataFrame({"color": [picked_color]})
-                    edited_df = pd.concat([edited_df, new_row], ignore_index=True)
-                    st.success(f"Added color '{new_color_name if new_color_name else picked_color}' ✅")
-                    # Update session state
-                    st.session_state['palettes'][chosen_index] = edited_df['color'].tolist()
-                    st.rerun()
+        if len(edited_df) > 0:
+            prev_cols = st.columns(len(edited_df))
+            for c, col in zip(edited_df['color'], prev_cols):
+                col.markdown(f"<div style='background:{c};padding:28px;border-radius:6px;border:1px solid #ddd'></div>", unsafe_allow_html=True)
+                col.write(c)
 
         # Pattern options
+        st.write("---")
         pattern_type = st.selectbox("Pattern type", ["random", "stripe", "heart", "star", "circle"])
         generate_pattern = st.button("Generate pattern")
 
@@ -404,141 +410,176 @@ with tabs[1]:
             grid_size = 30
             cell_size = 20
             colors_list = edited_df["color"].tolist()
+            
+            if len(colors_list) == 0:
+                st.warning("Please add at least one color to the palette.")
+            else:
+                # ======================= MASK 정의 =======================
+                HEART_MASK_9 = [
+                    [0,0,1,1,0,1,1,0,0],
+                    [0,1,1,1,1,1,1,1,0],
+                    [1,1,1,1,1,1,1,1,1],
+                    [1,1,1,1,1,1,1,1,1],
+                    [1,1,1,1,1,1,1,1,1],
+                    [0,1,1,1,1,1,1,1,0],
+                    [0,0,1,1,1,1,1,0,0],
+                    [0,0,0,1,1,1,0,0,0],
+                    [0,0,0,0,1,0,0,0,0]
+                ]
+                STAR_MASK_7 = [
+                    [0,0,0,1,0,0,0],
+                    [0,0,0,1,0,0,0],
+                    [1,1,1,1,1,1,1],
+                    [0,0,1,1,1,0,0],
+                    [0,1,1,1,1,1,0],
+                    [1,0,0,0,0,0,1],
+                    [0,0,0,0,0,0,0]
+                ]
+                CIRCLE_MASK_7 = [
+                    [0,0,1,1,1,0,0],
+                    [0,1,1,1,1,1,0],
+                    [1,1,1,1,1,1,1],
+                    [1,1,1,1,1,1,1],
+                    [1,1,1,1,1,1,1],
+                    [0,1,1,1,1,1,0],
+                    [0,0,1,1,1,0,0]
+                ]
 
-            # ======================= MASK 정의 =======================
-            HEART_MASK_9 = [
-                [0,0,1,1,0,1,1,0,0],
-                [0,1,1,1,1,1,1,1,0],
-                [1,1,1,1,1,1,1,1,1],
-                [1,1,1,1,1,1,1,1,1],
-                [1,1,1,1,1,1,1,1,1],
-                [0,1,1,1,1,1,1,1,0],
-                [0,0,1,1,1,1,1,0,0],
-                [0,0,0,1,1,1,0,0,0],
-                [0,0,0,0,1,0,0,0,0]
-            ]
-            STAR_MASK_7 = [
-                [0,0,0,1,0,0,0],
-                [0,0,0,1,0,0,0],
-                [1,1,1,1,1,1,1],
-                [0,0,1,1,1,0,0],
-                [0,1,1,1,1,1,0],
-                [1,0,0,0,0,0,1],
-                [0,0,0,0,0,0,0]
-            ]
-            CIRCLE_MASK_7 = [
-                [0,0,1,1,1,0,0],
-                [0,1,1,1,1,1,0],
-                [1,1,1,1,1,1,1],
-                [1,1,1,1,1,1,1],
-                [1,1,1,1,1,1,1],
-                [0,1,1,1,1,1,0],
-                [0,0,1,1,1,0,0]
-            ]
+                # 캔버스 생성 (배경색 랜덤)
+                bg_color = random.choice(colors_list)
+                img = Image.new("RGB", (grid_size*cell_size, grid_size*cell_size), bg_color)
+                draw = ImageDraw.Draw(img)
 
-            # 캔버스 생성 (배경색 랜덤)
-            bg_color = random.choice(colors_list)
-            img = Image.new("RGB", (grid_size*cell_size, grid_size*cell_size), bg_color)
-            draw = ImageDraw.Draw(img)
+                # 패턴별 로직
+                if pattern_type == "stripe":
+                    # 각 가로줄마다 하나의 색상으로 전체 채우기
+                    for row in range(grid_size):
+                        row_color = random.choice(colors_list)
+                        for col in range(grid_size):
+                            x0, y0 = col*cell_size, row*cell_size
+                            x1, y1 = x0+cell_size, y0+cell_size
+                            draw.rectangle([x0,y0,x1,y1], fill=row_color)
 
-            # 패턴별 로직
-            if pattern_type == "stripe":
-                # 각 가로줄마다 하나의 색상으로 전체 채우기
-                for row in range(grid_size):
-                    row_color = random.choice(colors_list)
-                    for col in range(grid_size):
-                        x0, y0 = col*cell_size, row*cell_size
-                        x1, y1 = x0+cell_size, y0+cell_size
-                        draw.rectangle([x0,y0,x1,y1], fill=row_color)
+                elif pattern_type == "random":
+                    # 모든 셀을 랜덤 색상으로 채우기
+                    for row in range(grid_size):
+                        for col in range(grid_size):
+                            x0, y0 = col*cell_size, row*cell_size
+                            x1, y1 = x0+cell_size, y0+cell_size
+                            cell_color = random.choice(colors_list)
+                            draw.rectangle([x0,y0,x1,y1], fill=cell_color)
 
-            elif pattern_type == "random":
-                # 모든 셀을 랜덤 색상으로 채우기
-                for row in range(grid_size):
-                    for col in range(grid_size):
-                        x0, y0 = col*cell_size, row*cell_size
-                        x1, y1 = x0+cell_size, y0+cell_size
-                        cell_color = random.choice(colors_list)
-                        draw.rectangle([x0,y0,x1,y1], fill=cell_color)
-
-            elif pattern_type in ["heart", "star", "circle"]:
-                # 마스크 선택
-                if pattern_type == "heart":
-                    mask = HEART_MASK_9
-                elif pattern_type == "star":
-                    mask = STAR_MASK_7
-                else:  # circle
-                    mask = CIRCLE_MASK_7
-                
-                mask_h = len(mask)
-                mask_w = len(mask[0])
-                
-                # 배경 먼저 채우기
-                for row in range(grid_size):
-                    for col in range(grid_size):
-                        x0, y0 = col*cell_size, row*cell_size
-                        x1, y1 = x0+cell_size, y0+cell_size
-                        draw.rectangle([x0,y0,x1,y1], fill=bg_color)
-                
-                # 🎯 여러 개의 도형 배치 (최소 5개, 겹치지 않게)
-                num_shapes = random.randint(5, 8)  # 5~8개 랜덤
-                placed_positions = []
-                
-                # 도형이 들어갈 수 있는 영역 계산
-                max_attempts = 100
-                attempts = 0
-                
-                while len(placed_positions) < num_shapes and attempts < max_attempts:
-                    attempts += 1
+                elif pattern_type in ["heart", "star", "circle"]:
+                    # 마스크 선택
+                    if pattern_type == "heart":
+                        mask = HEART_MASK_9
+                    elif pattern_type == "star":
+                        mask = STAR_MASK_7
+                    else:  # circle
+                        mask = CIRCLE_MASK_7
                     
-                    # 랜덤 위치 선택
-                    start_row = random.randint(0, grid_size - mask_h)
-                    start_col = random.randint(0, grid_size - mask_w)
+                    mask_h = len(mask)
+                    mask_w = len(mask[0])
                     
-                    # 겹침 확인
-                    overlaps = False
-                    for prev_row, prev_col in placed_positions:
-                        # 두 도형의 경계 상자가 겹치는지 확인
-                        if not (start_row + mask_h <= prev_row or 
-                               start_row >= prev_row + mask_h or
-                               start_col + mask_w <= prev_col or 
-                               start_col >= prev_col + mask_w):
-                            overlaps = True
-                            break
+                    # 배경 먼저 채우기
+                    for row in range(grid_size):
+                        for col in range(grid_size):
+                            x0, y0 = col*cell_size, row*cell_size
+                            x1, y1 = x0+cell_size, y0+cell_size
+                            draw.rectangle([x0,y0,x1,y1], fill=bg_color)
                     
-                    if not overlaps:
-                        placed_positions.append((start_row, start_col))
+                    # 🎯 여러 개의 도형 배치 (최소 5개, 겹치지 않게)
+                    num_shapes = random.randint(5, 8)  # 5~8개 랜덤
+                    placed_positions = []
+                    
+                    # 도형이 들어갈 수 있는 영역 계산
+                    max_attempts = 100
+                    attempts = 0
+                    
+                    while len(placed_positions) < num_shapes and attempts < max_attempts:
+                        attempts += 1
                         
-                        # 도형 색상 선택 (배경과 다른 색)
-                        shape_colors = [c for c in colors_list if c != bg_color]
-                        if not shape_colors:
-                            shape_colors = colors_list
-                        shape_color = random.choice(shape_colors)
+                        # 랜덤 위치 선택
+                        start_row = random.randint(0, grid_size - mask_h)
+                        start_col = random.randint(0, grid_size - mask_w)
                         
-                        # 마스크에 따라 그리기
-                        for mask_row in range(mask_h):
-                            for mask_col in range(mask_w):
-                                if mask[mask_row][mask_col] == 1:
-                                    actual_row = start_row + mask_row
-                                    actual_col = start_col + mask_col
-                                    if 0 <= actual_row < grid_size and 0 <= actual_col < grid_size:
-                                        x0 = actual_col * cell_size
-                                        y0 = actual_row * cell_size
-                                        x1 = x0 + cell_size
-                                        y1 = y0 + cell_size
-                                        draw.rectangle([x0,y0,x1,y1], fill=shape_color)
+                        # 겹침 확인
+                        overlaps = False
+                        for prev_row, prev_col in placed_positions:
+                            # 두 도형의 경계 상자가 겹치는지 확인
+                            if not (start_row + mask_h <= prev_row or 
+                                   start_row >= prev_row + mask_h or
+                                   start_col + mask_w <= prev_col or 
+                                   start_col >= prev_col + mask_w):
+                                overlaps = True
+                                break
+                        
+                        if not overlaps:
+                            placed_positions.append((start_row, start_col))
+                            
+                            # 도형 색상 선택 (배경과 다른 색)
+                            shape_colors = [c for c in colors_list if c != bg_color]
+                            if not shape_colors:
+                                shape_colors = colors_list
+                            shape_color = random.choice(shape_colors)
+                            
+                            # 마스크에 따라 그리기
+                            for mask_row in range(mask_h):
+                                for mask_col in range(mask_w):
+                                    if mask[mask_row][mask_col] == 1:
+                                        actual_row = start_row + mask_row
+                                        actual_col = start_col + mask_col
+                                        if 0 <= actual_row < grid_size and 0 <= actual_col < grid_size:
+                                            x0 = actual_col * cell_size
+                                            y0 = actual_row * cell_size
+                                            x1 = x0 + cell_size
+                                            y1 = y0 + cell_size
+                                            draw.rectangle([x0,y0,x1,y1], fill=shape_color)
 
-            # 격자선 그리기 (Animal pattern처럼)
-            for i in range(grid_size+1):
-                # 세로선
-                draw.line([(i*cell_size, 0), (i*cell_size, grid_size*cell_size)], fill=(0,0,0), width=1)
-                # 가로선
-                draw.line([(0, i*cell_size), (grid_size*cell_size, i*cell_size)], fill=(0,0,0), width=1)
+                # 격자선 그리기 (Animal pattern처럼)
+                for i in range(grid_size+1):
+                    # 세로선
+                    draw.line([(i*cell_size, 0), (i*cell_size, grid_size*cell_size)], fill=(0,0,0), width=1)
+                    # 가로선
+                    draw.line([(0, i*cell_size), (grid_size*cell_size, i*cell_size)], fill=(0,0,0), width=1)
 
-            st.image(img, caption=f"Generated {pattern_type.title()} Pattern (30x30)", use_column_width=True)
+                st.image(img, caption=f"Generated {pattern_type.title()} Pattern (30x30)", use_column_width=True)
 
-            buf = io.BytesIO()
-            img.save(buf, format="PNG")
-            st.download_button("Download pattern image", data=buf.getvalue(), file_name=f"pattern_{pattern_type}.png", mime="image/png")
+                buf = io.BytesIO()
+                img.save(buf, format="PNG")
+                st.download_button("Download pattern image", data=buf.getvalue(), file_name=f"pattern_{pattern_type}.png", mime="image/png")
+
+                # ✨ Pattern Palette CSV (가로 형식)
+                st.write("---")
+                st.write("**Pattern Colors Used:**")
+                
+                # 가로 형식으로 데이터 준비
+                unique_colors = list(set(colors_list))  # 중복 제거
+                color_columns = {f'Color{i+1}': color for i, color in enumerate(unique_colors)}
+                
+                # 가로 DataFrame 생성
+                pattern_df = pd.DataFrame([color_columns])
+                
+                # 색상 미리보기 추가
+                color_preview_cols = st.columns(len(unique_colors))
+                for idx, (col, color) in enumerate(zip(color_preview_cols, unique_colors)):
+                    col.markdown(f"<div style='background:{color};padding:28px;border-radius:6px;border:1px solid #ddd'></div>", unsafe_allow_html=True)
+                    col.write(color)
+                
+                # CSV 다운로드
+                csv_buf = io.StringIO()
+                pattern_df.to_csv(csv_buf, index=False)
+                csv_value = csv_buf.getvalue()
+                
+                st.download_button(
+                    'Download pattern colors CSV', 
+                    data=csv_value, 
+                    file_name=f'pattern_{pattern_type}_colors.csv', 
+                    mime='text/csv'
+                )
+                
+                # 테이블 표시
+                st.dataframe(pattern_df, use_container_width=True)
 # ---------------- Tab 3: Animal pattern design helper ----------------
 with tabs[2]:
     st.header('Animal pattern design helper')
