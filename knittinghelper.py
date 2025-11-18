@@ -45,7 +45,7 @@ with st.sidebar:
     st.markdown("**🐶🐱 Animal Pattern Design Helper**: Browse dog & cat images, select one, convert to a simplified pixel pattern, and download palette CSV.")
     st.markdown("**🏞️ Convert Image to Pattern**: Upload any image and convert it into a pixelated pattern with simplified palette and CSV export.")
     st.write('---')
-    st.markdown('Developed for knitters & crocheters — palettes and patterns are suggestions; ‼️ always **swatch** first ‼️')
+    st.markdown('Developed for knitters & crocheters — palettes and patterns are suggestions;  ‼️ always **swatch** first ‼️')
 
 # ---------------- Helpers ----------------
 
