@@ -455,15 +455,6 @@ with tabs[1]:
                     [0,0,1,1,1,0,0]
                 ]
 
-                # 🎨 색상 순환 인덱스 (모든 색상이 골고루 사용되도록)
-                color_idx = 0
-                
-                def get_next_color():
-                    nonlocal color_idx
-                    color = colors_list[color_idx % len(colors_list)]
-                    color_idx += 1
-                    return color
-
                 # 캔버스 생성 (배경색은 첫 번째 색상)
                 bg_color = colors_list[0]
                 img = Image.new("RGB", (grid_size*cell_size, grid_size*cell_size), bg_color)
@@ -473,7 +464,7 @@ with tabs[1]:
                 if pattern_type == "stripe":
                     # 각 가로줄마다 순환하며 색상 할당 (모든 색상 사용)
                     for row in range(grid_size):
-                        row_color = get_next_color()
+                        row_color = colors_list[row % len(colors_list)]
                         for col in range(grid_size):
                             x0, y0 = col*cell_size, row*cell_size
                             x1, y1 = x0+cell_size, y0+cell_size
@@ -481,7 +472,8 @@ with tabs[1]:
 
                 elif pattern_type == "random":
                     # 셔플된 색상 리스트를 반복 사용 (모든 색상 균등하게)
-                    shuffled_colors = colors_list * (grid_size * grid_size // len(colors_list) + 1)
+                    total_cells = grid_size * grid_size
+                    shuffled_colors = colors_list * (total_cells // len(colors_list) + 1)
                     random.shuffle(shuffled_colors)
                     idx = 0
                     for row in range(grid_size):
@@ -510,9 +502,8 @@ with tabs[1]:
                             x1, y1 = x0+cell_size, y0+cell_size
                             draw.rectangle([x0,y0,x1,y1], fill=bg_color)
                     
-                    # 🎯 도형 개수를 팔레트 색상 개수에 맞춤 (배경 제외)
-                    # 최소한 팔레트의 모든 색상이 사용되도록 보장
-                    num_shapes = max(len(colors_list), 5)  # 최소 5개, 또는 색상 개수만큼
+                    # 🎯 도형 개수를 팔레트 색상 개수에 맞춤
+                    num_shapes = max(len(colors_list), 5)
                     placed_positions = []
                     max_attempts = 200
                     attempts = 0
@@ -535,7 +526,7 @@ with tabs[1]:
                         if not overlaps:
                             placed_positions.append((start_row, start_col))
                             
-                            # 순환 방식으로 색상 선택 (모든 색상 사용 보장)
+                            # 순환 방식으로 색상 선택
                             shape_color = colors_list[shape_color_idx % len(colors_list)]
                             shape_color_idx += 1
                             
@@ -562,11 +553,10 @@ with tabs[1]:
                 img.save(buf, format="PNG")
                 st.download_button("Download pattern image", data=buf.getvalue(), file_name=f"pattern_{pattern_type}.png", mime="image/png")
 
-                # Pattern Palette CSV (가로 형식) - 실제 사용된 모든 색상 표시
+                # Pattern Palette CSV (가로 형식)
                 st.write("---")
                 st.write("**Pattern Colors Used:**")
                 
-                # 팔레트의 모든 색상 표시
                 all_colors = colors_list
                 color_columns = {f'Color{i+1}': color for i, color in enumerate(all_colors)}
                 pattern_df = pd.DataFrame([color_columns])
