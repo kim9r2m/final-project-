@@ -425,16 +425,14 @@ with tabs[1]:
                 st.warning("Please add at least one color to the palette.")
             else:
                 # ======================= MASK 정의 =======================
-                HEART_MASK_9 = [
-                    [0,0,1,1,0,1,1,0,0],
-                    [0,1,1,1,1,1,1,1,0],
-                    [1,1,1,1,1,1,1,1,1],
-                    [1,1,1,1,1,1,1,1,1],
-                    [1,1,1,1,1,1,1,1,1],
-                    [0,1,1,1,1,1,1,1,0],
-                    [0,0,1,1,1,1,1,0,0],
-                    [0,0,0,1,1,1,0,0,0],
-                    [0,0,0,0,1,0,0,0,0]
+                HEART_MASK_7 = [
+                    [0,0,1,0,1,0,0],
+                    [0,1,1,0,1,1,0],
+                    [1,1,1,1,1,1,1],
+                    [1,1,1,1,1,1,1],
+                    [0,1,1,1,1,1,0],
+                    [0,0,1,1,1,0,0],
+                    [0,0,0,1,0,0,0],
                 ]
                 STAR_MASK_7 = [
                     [0,0,0,1,0,0,0],
@@ -486,7 +484,7 @@ with tabs[1]:
 
                 elif pattern_type in ["heart", "star", "circle"]:
                     if pattern_type == "heart":
-                        mask = HEART_MASK_9
+                        mask = HEART_MASK_7
                     elif pattern_type == "star":
                         mask = STAR_MASK_7
                     else:
