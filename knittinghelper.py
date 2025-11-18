@@ -274,6 +274,7 @@ with tabs[0]:
         st.experimental_rerun()
 
 # ---------------- Tab 2: Color combination helper ----------------
+# ---------------- Tab 2: Color combination helper ----------------
 with tabs[1]:
     st.header("Color combination helper")
     st.write("Enter a keyword and choose a palette mode. Palettes are biased to the keyword when possible. You can regenerate and download CSV. Preview CSV below.")
@@ -296,7 +297,6 @@ with tabs[1]:
         if not keyword.strip():
             st.warning('Please enter a keyword.')
         else:
-            # make 3 palette options
             palettes = []
             for i in range(3):
                 pal = biased_palette_for_keyword(keyword, mode, seed_offset=st.session_state['palette_seed']+i, n_colors=5)
@@ -305,7 +305,6 @@ with tabs[1]:
 
     if 'palettes' in st.session_state:
         palettes = st.session_state['palettes']
-        # Display palettes and CSV preview
         rows = []
         for idx, pal in enumerate(palettes):
             st.subheader(f"Palette Option {idx+1}")
@@ -315,7 +314,7 @@ with tabs[1]:
                 col.write(c)
             rows.append([f'Option {idx+1}'] + pal)
 
-        # CSV and dataframe
+        # CSV
         header = ['Option','Color1','Color2','Color3','Color4','Color5']
         csv_buf = io.StringIO()
         writer = csv.writer(csv_buf)
@@ -326,7 +325,6 @@ with tabs[1]:
 
         st.download_button('Download palettes CSV', data=csv_value, file_name=f'palettes_{keyword.replace(" ","_")}.csv', mime='text/csv')
 
-        # show dataframe
         import pandas as pd
         df = pd.DataFrame(rows, columns=header)
         st.dataframe(df)
@@ -341,11 +339,98 @@ with tabs[1]:
 - **monochrome**: shades and tints of a single hue.
 """)
 
-
-    # Explain input-processing-output for debugging
+    # Debug info
     if keyword:
         st.markdown('**Debug — keyword processing**')
         st.write(f"Keyword: '{keyword}' → detected hue bias: {', '.join([k for k in ['yellow','red','blue','green','purple','pink','orange','brown'] if k in keyword.lower()]) or 'none (random)'}")
+
+    # ---------------------------------------------------------
+    # ⭐ NEW FEATURE — Random Pattern Poster Generator
+    # ---------------------------------------------------------
+    st.subheader("Generate Pattern Poster from Palette")
+
+    if 'palettes' in st.session_state:
+        palettes = st.session_state['palettes']
+
+        # Choose palette
+        chosen_index = st.selectbox(
+            "Choose one palette to use for pattern generation",
+            options=list(range(len(palettes))),
+            format_func=lambda x: f"Palette Option {x+1}"
+        )
+        chosen_palette = palettes[chosen_index]
+
+        st.write("Editable palette (you can add/remove/change colors):")
+        editable_df = pd.DataFrame({"color": chosen_palette})
+        edited_df = st.data_editor(editable_df, num_rows="dynamic")
+
+        # Color preview        
+        st.write("Preview Colors:")
+        prev_cols = st.columns(len(edited_df))
+        for c, col in zip(edited_df['color'], prev_cols):
+            col.markdown(f"<div style='background:{c};padding:28px;border-radius:6px;border:1px solid #ddd'></div>", unsafe_allow_html=True)
+            col.write(c)
+
+        # Pattern options
+        pattern_type = st.selectbox("Pattern type", ["stripe", "circle", "star", "heart", "diamond"])
+        generate_pattern = st.button("Generate pattern")
+
+        if generate_pattern:
+            import numpy as np
+            from PIL import Image, ImageDraw
+            import random
+
+            grid = 30
+            cell = 20
+            img = Image.new("RGB", (grid*cell, grid*cell), random.choice(edited_df["color"].tolist()))
+            draw = ImageDraw.Draw(img)
+
+            used = set()
+
+            def random_empty():
+                while True:
+                    r = random.randint(0, grid-1)
+                    c = random.randint(0, grid-1)
+                    if (r,c) not in used:
+                        used.add((r,c))
+                        return r,c
+
+            for _ in range(150):
+                r,c = random_empty()
+                x0, y0 = c*cell, r*cell
+                x1, y1 = x0+cell, y0+cell
+                col = random.choice(edited_df["color"].tolist())
+
+                if pattern_type == "stripe":
+                    draw.rectangle([x0,y0,x1,y1], fill=col)
+
+                elif pattern_type == "circle":
+                    draw.ellipse([x0,y0,x1,y1], fill=col)
+
+                elif pattern_type == "diamond":
+                    draw.polygon([(x0+cell//2,y0),(x1,y0+cell//2),(x0+cell//2,y1),(x0,y0+cell//2)], fill=col)
+
+                elif pattern_type == "heart":
+                    cx, cy = x0+cell//2, y0+cell//2
+                    s = cell//2
+                    draw.polygon([(cx, y0), (x1, cy), (cx, y1), (x0, cy)], fill=col)
+
+                elif pattern_type == "star":
+                    cx, cy = x0+cell//2, y0+cell//2
+                    s = cell//2
+                    draw.polygon([
+                        (cx, y0), (cx+s//2, cy), (x1, cy), 
+                        (cx+s//3, cy+s//3), (cx+s//2, y1),
+                        (cx, cy+s//2), (cx-s//2, y1),
+                        (cx-s//3, cy+s//3), (x0, cy), (cx-s//2, cy)
+                    ], fill=col)
+
+            st.image(img, caption="Generated Pattern", use_column_width=True)
+
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            st.download_button("Download pattern image", data=buf.getvalue(), file_name="pattern.png", mime="image/png")
+
 
 # ---------------- Tab 3: Animal pattern design helper ----------------
 with tabs[2]:
