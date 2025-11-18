@@ -274,7 +274,6 @@ with tabs[0]:
         st.experimental_rerun()
 
 # ---------------- Tab 2: Color combination helper ----------------
-# ---------------- Tab 2: Color combination helper ----------------
 with tabs[1]:
     st.header("Color combination helper")
     st.write("Enter a keyword and choose a palette mode. Palettes are biased to the keyword when possible. You can regenerate and download CSV. Preview CSV below.")
@@ -347,89 +346,110 @@ with tabs[1]:
     # ---------------------------------------------------------
     # ⭐ NEW FEATURE — Random Pattern Poster Generator
     # ---------------------------------------------------------
-    st.subheader("Generate Pattern Poster from Palette")
 
-    if 'palettes' in st.session_state:
-        palettes = st.session_state['palettes']
+# ======================= MASK DEFINITIONS =======================
 
-        # Choose palette
-        chosen_index = st.selectbox(
-            "Choose one palette to use for pattern generation",
-            options=list(range(len(palettes))),
-            format_func=lambda x: f"Palette Option {x+1}"
-        )
-        chosen_palette = palettes[chosen_index]
+HEART_MASK_9 = [
+    [0,0,1,1,0,1,1,0,0],
+    [0,1,1,1,0,1,1,1,0],
+    [1,1,1,1,1,1,1,1,1],
+    [1,1,1,1,1,1,1,1,1],
+    [1,1,1,1,1,1,1,1,1],
+    [0,1,1,1,1,1,1,1,0],
+    [0,0,1,1,1,1,1,0,0],
+    [0,0,0,1,1,1,0,0,0],
+    [0,0,0,0,1,0,0,0,0]
+]
 
-        st.write("Editable palette (you can add/remove/change colors):")
-        editable_df = pd.DataFrame({"color": chosen_palette})
-        edited_df = st.data_editor(editable_df, num_rows="dynamic")
+STAR_MASK_7 = [
+    [0,0,0,1,0,0,0],
+    [0,0,0,1,0,0,0],
+    [1,1,1,1,1,1,1],
+    [0,0,1,1,1,0,0],
+    [0,1,1,1,1,1,0],
+    [1,0,0,0,0,0,1],
+    [0,0,0,0,0,0,0]
+]
 
-        # Color preview        
-        st.write("Preview Colors:")
-        prev_cols = st.columns(len(edited_df))
-        for c, col in zip(edited_df['color'], prev_cols):
-            col.markdown(f"<div style='background:{c};padding:28px;border-radius:6px;border:1px solid #ddd'></div>", unsafe_allow_html=True)
-            col.write(c)
+CIRCLE_MASK_7 = [
+    [0,0,1,1,1,0,0],
+    [0,1,1,1,1,1,0],
+    [1,1,1,1,1,1,1],
+    [1,1,1,1,1,1,1],
+    [1,1,1,1,1,1,1],
+    [0,1,1,1,1,1,0],
+    [0,0,1,1,1,0,0]
+]
 
-        # Pattern options
-        pattern_type = st.selectbox("Pattern type", ["stripe", "circle", "star", "heart", "diamond"])
-        generate_pattern = st.button("Generate pattern")
+# ======================= UTILITY FUNCTIONS =======================
 
-        if generate_pattern:
-            import numpy as np
-            from PIL import Image, ImageDraw
-            import random
+def generate_pixel_grid(size=30, mode="random", colors=None, shape_mask=None, stripe=False):
+    if colors is None:
+        colors = ["#C4A484", "#FFE6CC", "#8B5A2B"]
 
-            grid = 30
-            cell = 20
-            img = Image.new("RGB", (grid*cell, grid*cell), random.choice(edited_df["color"].tolist()))
-            draw = ImageDraw.Draw(img)
+    grid = np.full((size, size), "#FFFFFF", dtype=object)
 
-            used = set()
+    if mode == "shape" and shape_mask is not None:
+        mask_h = len(shape_mask)
+        mask_w = len(shape_mask[0])
+        off_y = (size - mask_h) // 2
+        off_x = (size - mask_w) // 2
+        shape_color = random.choice(colors)
 
-            def random_empty():
-                while True:
-                    r = random.randint(0, grid-1)
-                    c = random.randint(0, grid-1)
-                    if (r,c) not in used:
-                        used.add((r,c))
-                        return r,c
+        for y in range(mask_h):
+            for x in range(mask_w):
+                if shape_mask[y][x] == 1:
+                    grid[off_y + y][off_x + x] = shape_color
+        return grid
 
-            for _ in range(150):
-                r,c = random_empty()
-                x0, y0 = c*cell, r*cell
-                x1, y1 = x0+cell, y0+cell
-                col = random.choice(edited_df["color"].tolist())
+    if stripe:
+        for y in range(size):
+            row_color = random.choice(colors)
+            grid[y, :] = row_color
+        return grid
 
-                if pattern_type == "stripe":
-                    draw.rectangle([x0,y0,x1,y1], fill=col)
+    for y in range(size):
+        for x in range(size):
+            grid[y][x] = random.choice(colors)
 
-                elif pattern_type == "circle":
-                    draw.ellipse([x0,y0,x1,y1], fill=col)
+    return grid
 
-                elif pattern_type == "diamond":
-                    draw.polygon([(x0+cell//2,y0),(x1,y0+cell//2),(x0+cell//2,y1),(x0,y0+cell//2)], fill=col)
 
-                elif pattern_type == "heart":
-                    cx, cy = x0+cell//2, y0+cell//2
-                    s = cell//2
-                    draw.polygon([(cx, y0), (x1, cy), (cx, y1), (x0, cy)], fill=col)
+def draw_grid_image(grid, pixel_size=20):
+    h, w = grid.shape
+    img = Image.new("RGB", (w * pixel_size, h * pixel_size), "white")
+    pixels = img.load()
 
-                elif pattern_type == "star":
-                    cx, cy = x0+cell//2, y0+cell//2
-                    s = cell//2
-                    draw.polygon([
-                        (cx, y0), (cx+s//2, cy), (x1, cy), 
-                        (cx+s//3, cy+s//3), (cx+s//2, y1),
-                        (cx, cy+s//2), (cx-s//2, y1),
-                        (cx-s//3, cy+s//3), (x0, cy), (cx-s//2, cy)
-                    ], fill=col)
+    for y in range(h):
+        for x in range(w):
+            color = tuple(int(grid[y][x].lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
+            for py in range(pixel_size):
+                for px in range(pixel_size):
+                    pixels[x * pixel_size + px, y * pixel_size + py] = color
 
-            st.image(img, caption="Generated Pattern", use_column_width=True)
+    return img
 
-            buf = io.BytesIO()
-            img.save(buf, format="PNG")
-            st.download_button("Download pattern image", data=buf.getvalue(), file_name="pattern.png", mime="image/png")
+# ======================= STREAMLIT UI =======================
+
+pattern_type = st.selectbox("Pattern Type", ["random", "stripe", "heart", "star", "circle"])
+colors_input = st.text_input("Colors (comma separated)", "#C4A484, #FFE6CC, #8B5A2B")
+colors = [c.strip() for c in colors_input.split(",") if c.strip()]
+
+if st.button("Generate Pattern"):
+    if pattern_type == "heart":
+        grid = generate_pixel_grid(mode="shape", colors=colors, shape_mask=HEART_MASK_9)
+    elif pattern_type == "star":
+        grid = generate_pixel_grid(mode="shape", colors=colors, shape_mask=STAR_MASK_7)
+    elif pattern_type == "circle":
+        grid = generate_pixel_grid(mode="shape", colors=colors, shape_mask=CIRCLE_MASK_7)
+    elif pattern_type == "stripe":
+        grid = generate_pixel_grid(stripe=True, colors=colors)
+    else:
+        grid = generate_pixel_grid(colors=colors)
+
+    img = draw_grid_image(grid)
+    st.image(img, caption=f"Pattern: {pattern_type}")
+
 
 
 # ---------------- Tab 3: Animal pattern design helper ----------------
