@@ -225,7 +225,7 @@ def convert_to_pixel_pattern_from_image(img: Image.Image, pixel_w: int, pixel_h:
 # ---------------- UI ----------------
 st.title("🧶 Knitting & Crochet Helper")
 
-tabs = st.tabs(["AI Helper", "Color combination helper", "Animal pattern design helper", "Convert image to pattern"])
+tabs = st.tabs(["🤖 AI Helper", "🎨 Color combination helper", "🐶🐱 Animal pattern design helper", "🏞️ Convert image to pattern"])
 
 # ---------------- Tab 1: AI Helper ----------------
 with tabs[0]:
@@ -390,7 +390,7 @@ with tabs[2]:
             pw, ph = map(int, px_input.lower().split('x'))
         except Exception:
             pw = ph = 24
-        n_colors = st.slider('Number of colors (simplify)', min_value=4, max_value=24, value=8)
+        n_colors = st.slider('Number of colors (simplify)', min_value=2, max_value=30, value=10)
 
         if st.button('Convert to pixel pattern'):
             try:
@@ -434,7 +434,7 @@ with tabs[3]:
         pw, ph = map(int, px_input.lower().split('x'))
     except Exception:
         pw = ph = 30
-    n_colors = st.slider('Number of colors (simplify)', min_value=4, max_value=24, value=10, key='conv_colors')
+    n_colors = st.slider('Number of colors (simplify)', min_value=2, max_value=30, value=10, key='conv_colors')
 
     if uploaded and st.button('Generate pattern'):
         try:
