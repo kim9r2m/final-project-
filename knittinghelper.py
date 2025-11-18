@@ -139,7 +139,7 @@ def hsv_to_rgb(h, s, v):
         return (v,p,q)
 
 # Palette modes offered
-PALETTE_MODES = ['pastel','vibrant','earthy','monochrome','analogous','complementary']
+PALETTE_MODES = ['pastel','vibrant','earthy','monochrome']
 
 # Fetch images
 def fetch_dog_images(limit=12):
@@ -339,8 +339,6 @@ with tabs[1]:
 - **vibrant**: bold and strong colors.
 - **earthy**: natural, warm organic tones.
 - **monochrome**: shades and tints of a single hue.
-- **analogous**: colors next to each other on the color wheel.
-- **complementary**: colors opposite on the color wheel.
 """)
 
 
