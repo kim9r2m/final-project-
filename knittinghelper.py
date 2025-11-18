@@ -493,6 +493,9 @@ with tabs[1]:
                     mask_h = len(mask)
                     mask_w = len(mask[0])
                     
+                    # 🎨 배경색 랜덤 선택 (generate할 때마다 다르게)
+                    bg_color = random.choice(colors_list)
+                    
                     # 배경 먼저 채우기
                     for row in range(grid_size):
                         for col in range(grid_size):
@@ -505,7 +508,12 @@ with tabs[1]:
                     placed_positions = []
                     max_attempts = 200
                     attempts = 0
-                    shape_color_idx = 1  # 배경(0번) 제외하고 시작
+                    
+                    # 배경색을 제외한 나머지 색상들로 순환
+                    available_colors = [c for c in colors_list if c != bg_color]
+                    if not available_colors:  # 모든 색상이 같은 경우
+                        available_colors = colors_list
+                    shape_color_idx = 0
                     
                     while len(placed_positions) < num_shapes and attempts < max_attempts:
                         attempts += 1
@@ -524,8 +532,8 @@ with tabs[1]:
                         if not overlaps:
                             placed_positions.append((start_row, start_col))
                             
-                            # 순환 방식으로 색상 선택
-                            shape_color = colors_list[shape_color_idx % len(colors_list)]
+                            # 순환 방식으로 색상 선택 (배경 제외)
+                            shape_color = available_colors[shape_color_idx % len(available_colors)]
                             shape_color_idx += 1
                             
                             for mask_row in range(mask_h):
@@ -539,8 +547,7 @@ with tabs[1]:
                                             x1 = x0 + cell_size
                                             y1 = y0 + cell_size
                                             draw.rectangle([x0,y0,x1,y1], fill=shape_color)
-
-                # 격자선 그리기
+                # 격자선 그리기 
                 for i in range(grid_size+1):
                     draw.line([(i*cell_size, 0), (i*cell_size, grid_size*cell_size)], fill=(0,0,0), width=1)
                     draw.line([(0, i*cell_size), (grid_size*cell_size, i*cell_size)], fill=(0,0,0), width=1)
