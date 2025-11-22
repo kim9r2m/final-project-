@@ -4,4 +4,4 @@ pillow
 numpy
 scikit-learn
 pandas
-openai
+openai>=1.0.0
