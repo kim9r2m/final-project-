@@ -525,27 +525,27 @@ with tabs[1]:
 
     # Tab 2에서 팔레트 생성 부분 수정:
 
-if st.button('Generate palettes') or regen:
-    if not keyword.strip():
-        st.warning('Please enter a keyword.')
-    else:
-        palettes = []
-        methods = []
-        for i in range(3):
-            pal, method = biased_palette_for_keyword_3tier(
-                keyword, 
-                mode, 
-                seed_offset=st.session_state['palette_seed']+i, 
-                n_colors=5
-            )
-            palettes.append(pal)
-            methods.append(method)
+    if st.button('Generate palettes') or regen:
+        if not keyword.strip():
+            st.warning('Please enter a keyword.')
+        else:
+            palettes = []
+            methods = []
+            for i in range(3):
+                pal, method = biased_palette_for_keyword_3tier(
+                    keyword, 
+                    mode, 
+                    seed_offset=st.session_state['palette_seed']+i, 
+                    n_colors=5
+                )
+                palettes.append(pal)
+                methods.append(method)
         
-        st.session_state['palettes'] = palettes
-        st.session_state['palette_methods'] = methods
+            st.session_state['palettes'] = palettes
+            st.session_state['palette_methods'] = methods
 
 # 팔레트 표시 부분에 감지 방법 추가:
-if 'palettes' in st.session_state:
+    if 'palettes' in st.session_state:
         palettes = st.session_state['palettes']
         methods = st.session_state.get('palette_methods', [None] * len(palettes))
         rows = []
