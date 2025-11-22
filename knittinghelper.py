@@ -13,7 +13,7 @@ import csv
 from PIL import Image, ImageDraw
 import numpy as np
 import os
-
+import json
 
 # Optional OpenAI
 try:
@@ -53,6 +53,237 @@ with st.sidebar:
 def hex_from_rgb(rgb):
     return '#%02x%02x%02x' % tuple(int(x) for x in rgb)
 
+def extract_colors_from_keyword_with_hf(keyword: str):
+    """
+    1단계: Hugging Face Zero-Shot Classification으로 색상 추출
+    BART 모델 사용 (무료, API key 불필요)
+    """
+    API_URL = "https://api-inference.huggingface.co/models/facebook/bart-large-mnli"
+    
+    # 확장된 색상 리스트
+    colors = [
+        'red', 'orange', 'yellow', 'green', 'blue', 'purple', 
+        'pink', 'brown', 'white', 'black', 'grey', 'turquoise',
+        'gold', 'silver', 'violet', 'cyan', 'lime', 'indigo'
+    ]
+    
+    try:
+        response = requests.post(
+            API_URL,
+            headers={},  # API key 불필요
+            json={
+                "inputs": keyword,
+                "parameters": {
+                    "candidate_labels": colors
+                }
+            },
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            # 신뢰도 30% 이상인 상위 3개 색상 반환
+            top_colors = []
+            for label, score in zip(result['labels'], result['scores']):
+                if score > 0.3:  # 신뢰도 임계값
+                    top_colors.append(label)
+                if len(top_colors) >= 3:
+                    break
+            
+            if top_colors:
+                print(f"✅ HF API detected colors for '{keyword}': {top_colors} (scores: {[f'{s:.2f}' for s in result['scores'][:len(top_colors)]]})")
+                return top_colors
+        
+        return None
+            
+    except Exception as e:
+        print(f"⚠️ HF API error: {e}")
+        return None
+
+
+def biased_palette_for_keyword_3tier(keyword: str, mode: str, seed_offset: int = 0, n_colors: int = 5):
+    """
+    3단계 Fallback 시스템으로 키워드 기반 팔레트 생성
+    
+    1단계: Hugging Face API (AI 기반 색상 추출)
+    2단계: 확장된 의미 사전 (100+ 키워드)
+    3단계: 기본 색상 매핑 (직접 색상명)
+    """
+    kw = keyword.lower()
+    
+    # 색상 이름 -> Hue 값 매핑
+    color_hue_map = {
+        'red': 0, 'orange': 30, 'yellow': 60, 'green': 120,
+        'blue': 210, 'purple': 270, 'pink': 330, 'brown': 30,
+        'white': 0, 'black': 0, 'grey': 0, 'gray': 0,
+        'violet': 280, 'turquoise': 180, 'gold': 45, 'silver': 0,
+        'cyan': 180, 'magenta': 300, 'lime': 80, 'indigo': 250
+    }
+    
+    base_hues = []
+    detection_method = None
+    
+    # ============================================
+    # 1단계: Hugging Face API 시도
+    # ============================================
+    detected_colors = extract_colors_from_keyword_with_hf(keyword)
+    
+    if detected_colors:
+        for color in detected_colors:
+            if color in color_hue_map:
+                base_hues.append(color_hue_map[color])
+        
+        if base_hues:
+            detection_method = "🤗 AI (Hugging Face)"
+    
+    # ============================================
+    # 2단계: 확장된 의미 사전 (Semantic Mapping)
+    # ============================================
+    if not base_hues:
+        semantic_color_map = {
+            # 자연/환경
+            'forest': [120, 140, 100], 'jungle': [120, 140, 80],
+            'ocean': [200, 210, 220], 'sea': [200, 210, 180],
+            'mountain': [120, 210, 30], 'desert': [40, 50, 30],
+            'sky': [210, 200], 'sunset': [0, 20, 40, 350],
+            'sunrise': [20, 40, 60], 'beach': [180, 200, 60],
+            'tropical': [150, 330, 30], 'arctic': [180, 200, 0],
+            'savanna': [45, 60, 30], 'lake': [200, 210, 120],
+            'river': [200, 180, 120], 'meadow': [100, 120, 80],
+            'garden': [100, 120, 330], 'park': [120, 80, 200],
+            
+            # 계절
+            'spring': [80, 120, 330, 60], 'summer': [60, 200, 50, 180],
+            'autumn': [20, 30, 40, 10], 'fall': [20, 30, 40, 10],
+            'winter': [200, 210, 0, 180],
+            
+            # 시간대
+            'dawn': [20, 330, 200, 280], 'morning': [60, 200, 50],
+            'noon': [60, 180, 50], 'afternoon': [45, 30, 200],
+            'dusk': [270, 20, 340, 280], 'evening': [270, 340, 210],
+            'midnight': [240, 260, 0, 280], 'night': [240, 260, 210],
+            
+            # 음식
+            'cherry': [350, 0], 'strawberry': [350, 330], 'berry': [320, 340, 350],
+            'apple': [0, 120, 60], 'orange': [30, 40], 'lemon': [55, 65],
+            'lime': [80, 100], 'mint': [140, 160, 150], 'basil': [120, 140],
+            'chocolate': [20, 30, 25], 'coffee': [25, 30, 20], 'mocha': [25, 30],
+            'vanilla': [50, 60, 40], 'caramel': [35, 45], 'honey': [45, 55],
+            'lavender': [260, 280, 270], 'rose': [350, 330, 340],
+            'cinnamon': [25, 35], 'pumpkin': [30, 40], 'blueberry': [240, 250],
+            'grape': [270, 280], 'peach': [20, 330, 40],
+            
+            # 꽃
+            'sunflower': [50, 60, 45], 'daisy': [60, 50, 90],
+            'tulip': [350, 330, 60, 340], 'orchid': [280, 290, 330],
+            'jasmine': [60, 50, 80], 'hibiscus': [350, 330],
+            'magnolia': [330, 50, 280], 'peony': [330, 340, 350],
+            'iris': [270, 280, 240], 'lily': [60, 50, 330],
+            
+            # 보석/금속
+            'ruby': [350, 0, 340], 'emerald': [140, 150, 130],
+            'sapphire': [220, 230, 240], 'amethyst': [270, 280, 290],
+            'topaz': [40, 50, 45], 'pearl': [50, 0, 330],
+            'diamond': [180, 200, 0], 'jade': [150, 140, 160],
+            'opal': [180, 330, 270], 'coral': [10, 20, 350],
+            
+            # 감정/분위기
+            'calm': [200, 210, 180], 'peaceful': [150, 180, 210],
+            'energetic': [0, 50, 60, 30], 'vibrant': [0, 330, 60],
+            'cozy': [20, 30, 10, 40], 'warm': [0, 20, 40, 30],
+            'cool': [180, 200, 220, 210], 'fresh': [150, 120, 80, 180],
+            'romantic': [330, 340, 350, 320], 'elegant': [0, 270, 330],
+            'vintage': [30, 40, 200, 25], 'retro': [40, 200, 330],
+            'modern': [0, 200, 0, 210], 'minimal': [0, 200, 210],
+            'rustic': [30, 40, 120], 'industrial': [0, 210, 30],
+            'bohemian': [30, 330, 280, 120], 'luxury': [280, 45, 0],
+            
+            # 재료/텍스처
+            'wool': [40, 50, 30, 0], 'cotton': [50, 60, 200, 180],
+            'silk': [330, 270, 50, 280], 'linen': [60, 50, 120],
+            'denim': [210, 220, 200], 'leather': [30, 20, 25],
+            'suede': [40, 30, 280], 'velvet': [270, 280, 0],
+            'cashmere': [330, 280, 50], 'tweed': [30, 120, 40],
+            
+            # 날씨
+            'rainy': [200, 210, 0, 180], 'sunny': [50, 60, 180, 200],
+            'cloudy': [0, 200, 210, 180], 'snowy': [180, 200, 0, 210],
+            'stormy': [240, 0, 210, 260], 'foggy': [0, 200, 180],
+            'misty': [180, 200, 150], 'breezy': [180, 200, 120],
+            
+            # 도시/장소
+            'paris': [0, 330, 30, 210], 'tokyo': [350, 330, 0, 270],
+            'london': [0, 210, 30], 'newyork': [0, 210, 60],
+            'miami': [180, 330, 30], 'hawaii': [150, 330, 200],
+            'bali': [120, 330, 30], 'santorini': [210, 50, 330],
+            'morocco': [30, 350, 280], 'provence': [270, 60, 120],
+            
+            # 예술/스타일
+            'watercolor': [200, 330, 120, 280], 'pastel': [330, 200, 60],
+            'neon': [330, 180, 60, 280], 'monochrome': [0, 210, 240],
+            'rainbow': [0, 60, 120, 180, 240, 300],
+        }
+        
+        for key, hues in semantic_color_map.items():
+            if key in kw:
+                base_hues = hues
+                detection_method = f"📚 Semantic Dictionary (matched: '{key}')"
+                break
+    
+    # ============================================
+    # 3단계: 기본 색상 매핑 (Direct Color Names)
+    # ============================================
+    if not base_hues:
+        for color, hue in color_hue_map.items():
+            if color in kw:
+                base_hues = [hue]
+                detection_method = f"🎨 Direct Color ('{color}')"
+                break
+    
+    # ============================================
+    # 팔레트 생성
+    # ============================================
+    seed = abs(hash(keyword + str(seed_offset))) % (2**32)
+    rng = np.random.RandomState(seed)
+    
+    colors = []
+    for i in range(n_colors):
+        if base_hues:
+            # 감지된 색조 중 하나 선택 후 변형
+            base_hue = rng.choice(base_hues)
+            hue = (base_hue + rng.randint(-20, 20)) % 360
+            sat = rng.randint(45, 95)
+            val = rng.randint(45, 95)
+        else:
+            # 모든 단계 실패 시 완전 랜덤
+            hue = rng.randint(0, 360)
+            sat = rng.randint(30, 95)
+            val = rng.randint(35, 95)
+            detection_method = "🎲 Random (no match found)"
+        
+        # Mode adjustments
+        if mode == 'pastel':
+            sat = int(sat * 0.5)
+            val = min(95, int(val * 1.05))
+        elif mode == 'vibrant':
+            sat = min(100, int(sat * 1.2))
+            val = min(100, val)
+        elif mode == 'earthy':
+            sat = int(sat * 0.7)
+            val = int(val * 0.8)
+        elif mode == 'monochrome':
+            sat = int(sat * 0.2)
+        
+        # HSV -> RGB
+        c = hsv_to_rgb(hue/360.0, sat/100.0, val/100.0)
+        colors.append(hex_from_rgb([int(x*255) for x in c]))
+    
+    # 디버그 정보 출력
+    if detection_method:
+        print(f"Detection: {detection_method} for keyword '{keyword}'")
+    
+    return colors, detection_method  # 감지 방법도 함께 반환
+    
 def biased_palette_for_keyword(keyword: str, mode: str, seed_offset: int = 0, n_colors: int = 5):
     """Generate a palette biased by a keyword. For strong color words (e.g., 'yellow'), bias hue."""
     kw = keyword.lower()
@@ -292,26 +523,42 @@ with tabs[1]:
     if regen:
         st.session_state['palette_seed'] += 1
 
-    if st.button('Generate palettes') or regen:
-        if not keyword.strip():
-            st.warning('Please enter a keyword.')
-        else:
-            palettes = []
-            for i in range(3):
-                pal = biased_palette_for_keyword(keyword, mode, seed_offset=st.session_state['palette_seed']+i, n_colors=5)
-                palettes.append(pal)
-            st.session_state['palettes'] = palettes
+    # Tab 2에서 팔레트 생성 부분 수정:
 
-    if 'palettes' in st.session_state:
-        palettes = st.session_state['palettes']
-        rows = []
-        for idx, pal in enumerate(palettes):
-            st.subheader(f"Palette Option {idx+1}")
-            cols = st.columns(len(pal))
-            for c, col in zip(pal, cols):
-                col.markdown(f"<div style='background:{c};padding:28px;border-radius:8px'></div>", unsafe_allow_html=True)
-                col.write(c)
-            rows.append([f'Option {idx+1}'] + pal)
+if st.button('Generate palettes') or regen:
+    if not keyword.strip():
+        st.warning('Please enter a keyword.')
+    else:
+        palettes = []
+        methods = []
+        for i in range(3):
+            pal, method = biased_palette_for_keyword_3tier(
+                keyword, 
+                mode, 
+                seed_offset=st.session_state['palette_seed']+i, 
+                n_colors=5
+            )
+            palettes.append(pal)
+            methods.append(method)
+        
+        st.session_state['palettes'] = palettes
+        st.session_state['palette_methods'] = methods
+
+# 팔레트 표시 부분에 감지 방법 추가:
+if 'palettes' in st.session_state:
+    palettes = st.session_state['palettes']
+    methods = st.session_state.get('palette_methods', [None] * len(palettes))
+    
+    for idx, (pal, method) in enumerate(zip(palettes, methods)):
+        st.subheader(f"Palette Option {idx+1}")
+        if method:
+            st.caption(f"🔍 {method}")  # 감지 방법 표시
+        
+        cols = st.columns(len(pal))
+        for c, col in zip(pal, cols):
+            col.markdown(f"<div style='background:{c};padding:28px;border-radius:8px'></div>", unsafe_allow_html=True)
+            col.write(c)
+        rows.append([f'Option {idx+1}'] + pal)
 
         # CSV
         header = ['Option','Color1','Color2','Color3','Color4','Color5']
