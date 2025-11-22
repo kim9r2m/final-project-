@@ -401,6 +401,7 @@ st.title("🧶 Knitting & Crochet Helper")
 tabs = st.tabs(["🤖 AI Helper", "🎨 Color combination helper", "🐶🐱 Animal pattern design helper", "🏞️ Convert image to pattern"])
 
 # ---------------- Tab 1: AI Helper ----------------
+# ---------------- Tab 1: AI Helper ----------------
 with tabs[0]:
     st.header("AI Helper — Knitting & Crochet Expert")
     st.write("Ask craft questions and get friendly, practical guidance.")
@@ -423,13 +424,16 @@ with tabs[0]:
         st.session_state.messages.append({"role":"user","content":user_q})
         if OPENAI_AVAILABLE:
             try:
-                openai.api_key = os.environ.get('OPENAI_API_KEY')
-                completion = openai.ChatCompletion.create(
+                # ✅ 새로운 OpenAI API (v1.0.0+)
+                from openai import OpenAI
+                client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
+                
+                completion = client.chat.completions.create(
                     model='gpt-4o-mini',
                     messages=st.session_state.messages,
                     max_tokens=600
                 )
-                reply = completion['choices'][0]['message']['content']
+                reply = completion.choices[0].message.content
                 st.session_state.messages.append({"role":"assistant","content":reply})
             except Exception as e:
                 st.error(f"OpenAI error: {e}")
@@ -444,7 +448,7 @@ with tabs[0]:
 
     if st.button('Clear conversation'):
         st.session_state.messages = [{"role":"system","content":SYSTEM_PROMPT}]
-        st.experimental_rerun()
+        st.rerun()
 
 # ---------------- Tab 2: Color combination helper ----------------
 with tabs[1]:
