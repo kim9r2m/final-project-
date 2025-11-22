@@ -312,7 +312,7 @@ def hsv_to_rgb(h, s, v):
         return (v,p,q)
 
 # Palette modes offered
-PALETTE_MODES = ['pastel','vibrant','earthy','monochrome']
+PALETTE_MODES = ['normal','pastel','vibrant','earthy','monochrome']
 
 # Fetch images
 def fetch_dog_images(limit=12):
@@ -524,6 +524,7 @@ with tabs[1]:
     st.markdown("""
 **Palette Modes**
 
+- **normal**: balanced, natural colors without adjustment.
 - **pastel**: soft, low-saturation colors.
 - **vibrant**: bold and strong colors.
 - **earthy**: natural, warm organic tones.
