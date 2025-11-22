@@ -57,7 +57,6 @@ def hex_from_rgb(rgb):
 
 def biased_palette_for_keyword(keyword: str, mode: str, seed_offset: int = 0, n_colors: int = 5):
     """Generate a palette biased by a keyword. For strong color words (e.g., 'yellow'), bias hue."""
-    import colorsys
     COLOR_KEYWORDS = {
     "yellow": 50/360,
     "red": 0/360,
@@ -67,93 +66,93 @@ def biased_palette_for_keyword(keyword: str, mode: str, seed_offset: int = 0, n_
     "pink": 330/360,
     "orange": 30/360,
     "brown": 30/360,
-    }
+}
 
-    def fetch_colorapi_palette(keyword_hex: str, mode: str, count: int = 5):
+def fetch_colorapi_palette(keyword_hex: str, mode: str, count: int = 5):
     """
     Fetch palette from TheColorAPI. No API key required.
     keyword_hex: e.g., "FFD700"
     mode: monochrome, analogic, complement, triad, quad
     """
-        url = f"https://www.thecolorapi.com/scheme?hex={keyword_hex}&mode={mode}&count={count}"
-        try:
-            resp = requests.get(url, timeout=6)
-            if resp.status_code == 200:
-                data = resp.json()
-                return [c["hex"]["value"] for c in data.get("colors", [])]
-        except:
-            pass
-        return None
+    url = f"https://www.thecolorapi.com/scheme?hex={keyword_hex}&mode={mode}&count={count}"
+    try:
+        resp = requests.get(url, timeout=6)
+        if resp.status_code == 200:
+            data = resp.json()
+            return [c["hex"]["value"] for c in data.get("colors", [])]
+    except:
+        pass
+    return None
 
 
-    def hex_from_hue(h: float) -> str:
-        r, g, b = colorsys.hsv_to_rgb(h, 1, 1)
-        return f"{int(r*255):02X}{int(g*255):02X}{int(b*255):02X}"
+def hex_from_hue(h: float) -> str:
+    r, g, b = colorsys.hsv_to_rgb(h, 1, 1)
+    return f"{int(r*255):02X}{int(g*255):02X}{int(b*255):02X}"
 
 
-    def biased_palette_for_keyword(keyword: str, mode: str, seed_offset: int = 0, n_colors: int = 5):
+def biased_palette_for_keyword(keyword: str, mode: str, seed_offset: int = 0, n_colors: int = 5):
     """
     MIXED MODE:
     1) Keyword bias → hue 기반 내부 팔레트 생성
     2) TheColorAPI 팔레트 하나 생성
     3) 내부 팔레트 + API 팔레트 → 섞어서 최종 팔레트 생성
     """
-        random.seed(seed_offset + hash(keyword) % 99999)
-        keyword_lower = keyword.lower()
+    random.seed(seed_offset + hash(keyword) % 99999)
+    keyword_lower = keyword.lower()
 
     # ---- 1) Keyword hue bias detection ----
-        hue_base = None
-        for k, hv in COLOR_KEYWORDS.items():
-            if k in keyword_lower:
-                hue_base = hv
-                break
+    hue_base = None
+    for k, hv in COLOR_KEYWORDS.items():
+        if k in keyword_lower:
+            hue_base = hv
+            break
 
     # fallback: random hue
-        if hue_base is None:
-            hue_base = random.random()
+    if hue_base is None:
+        hue_base = random.random()
 
     # ---- 2) Internal algorithm palette ----
-        palette_internal = []
-        for _ in range(n_colors):
-            h = (hue_base + random.uniform(-0.05, 0.05)) % 1.0
-            if mode == "pastel":
-                s, v = random.uniform(0.2, 0.5), random.uniform(0.85, 1.0)
-            elif mode == "vibrant":
-                s, v = random.uniform(0.7, 1.0), random.uniform(0.8, 1.0)
-            elif mode == "earthy":
-                s, v = random.uniform(0.4, 0.7), random.uniform(0.5, 0.8)
-            elif mode == "monochrome":
-                s, v = 0.0, random.uniform(0.4, 1.0)
-            else:
-                s, v = random.random(), random.random()
+    palette_internal = []
+    for _ in range(n_colors):
+        h = (hue_base + random.uniform(-0.05, 0.05)) % 1.0
+        if mode == "pastel":
+            s, v = random.uniform(0.2, 0.5), random.uniform(0.85, 1.0)
+        elif mode == "vibrant":
+            s, v = random.uniform(0.7, 1.0), random.uniform(0.8, 1.0)
+        elif mode == "earthy":
+            s, v = random.uniform(0.4, 0.7), random.uniform(0.5, 0.8)
+        elif mode == "monochrome":
+            s, v = 0.0, random.uniform(0.4, 1.0)
+        else:
+            s, v = random.random(), random.random()
 
-            r, g, b = colorsys.hsv_to_rgb(h, s, v)
-            palette_internal.append(f"#{int(r*255):02X}{int(g*255):02X}{int(b*255):02X}")
+        r, g, b = colorsys.hsv_to_rgb(h, s, v)
+        palette_internal.append(f"#{int(r*255):02X}{int(g*255):02X}{int(b*255):02X}")
 
     # ---- 3) Try fetching TheColorAPI palette ----
-        keyword_hex = hex_from_hue(hue_base).replace("#", "")
-        colorapi_modes = {
-            "pastel": "analogic",
-            "vibrant": "complement",
-            "earthy": "quad",
-            "monochrome": "monochrome"
-            }
-        colorapi_mode = colorapi_modes.get(mode, "analogic")
+    keyword_hex = hex_from_hue(hue_base).replace("#", "")
+    colorapi_modes = {
+        "pastel": "analogic",
+        "vibrant": "complement",
+        "earthy": "quad",
+        "monochrome": "monochrome"
+    }
+    colorapi_mode = colorapi_modes.get(mode, "analogic")
 
-        palette_api = fetch_colorapi_palette(keyword_hex, colorapi_mode, count=n_colors)
+    palette_api = fetch_colorapi_palette(keyword_hex, colorapi_mode, count=n_colors)
 
     # ---- 4) Mix palettes (fallback-safe) ----
-        if palette_api:
-            combined = []
-            for i in range(n_colors):
-                if i % 2 == 0:
-                    combined.append(palette_internal[i])
-                else:
-                    combined.append(palette_api[i])
-            return combined
+    if palette_api:
+        combined = []
+        for i in range(n_colors):
+            if i % 2 == 0:
+                combined.append(palette_internal[i])
+            else:
+                combined.append(palette_api[i])
+        return combined
 
     # fallback: API failed → return internal palette only
-        return palette_internal
+    return palette_internal
 
 def hsv_to_rgb(h, s, v):
     # h in [0,1], s in [0,1], v in [0,1]
