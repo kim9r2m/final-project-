@@ -55,9 +55,7 @@ with st.sidebar:
 def hex_from_rgb(rgb):
     return '#%02x%02x%02x' % tuple(int(x) for x in rgb)
 
-def biased_palette_for_keyword(keyword: str, mode: str, seed_offset: int = 0, n_colors: int = 5):
-    """Generate a palette biased by a keyword. For strong color words (e.g., 'yellow'), bias hue."""
-    COLOR_KEYWORDS = {
+COLOR_KEYWORDS = {
     "yellow": 50/360,
     "red": 0/360,
     "blue": 220/360,
