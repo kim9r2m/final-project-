@@ -262,7 +262,10 @@ def biased_palette_for_keyword_3tier(keyword: str, mode: str, seed_offset: int =
             detection_method = "🎲 Random (no match found)"
         
         # Mode adjustments
-        if mode == 'pastel':
+        if mode == 'normal':
+            # 기본 값 그대로 유지 (조정 없음)
+            pass
+        elif mode == 'pastel':
             sat = int(sat * 0.5)
             val = min(95, int(val * 1.05))
         elif mode == 'vibrant':
@@ -284,67 +287,6 @@ def biased_palette_for_keyword_3tier(keyword: str, mode: str, seed_offset: int =
     
     return colors, detection_method  # 감지 방법도 함께 반환
     
-def biased_palette_for_keyword(keyword: str, mode: str, seed_offset: int = 0, n_colors: int = 5):
-    """Generate a palette biased by a keyword. For strong color words (e.g., 'yellow'), bias hue."""
-    kw = keyword.lower()
-    # Simple semantic hue mapping
-    hue_map = {
-        'red': 0,
-        'orange': 30,
-        'yellow': 60,
-        'green': 120,
-        'blue': 210,
-        'purple': 270,
-        'pink': 330,
-        'brown': 30,
-        'grey': 0,
-        'gray': 0,
-        'black': 0,
-        'white': 0,
-    }
-
-    base_hue = None
-    for k, h in hue_map.items():
-        if k in kw:
-            base_hue = h
-            break
-
-    # deterministic random but influenced by keyword
-    seed = abs(hash(keyword + str(seed_offset))) % (2**32)
-    rng = np.random.RandomState(seed)
-
-    colors = []
-    for i in range(n_colors):
-        if base_hue is not None:
-            # generate around base_hue
-            hue = (base_hue + rng.randint(-25, 25)) % 360
-            sat = rng.randint(40, 95)
-            val = rng.randint(40, 95)
-        else:
-            hue = rng.randint(0,360)
-            sat = rng.randint(30,95)
-            val = rng.randint(35,95)
-
-        # Mode adjustments
-        if mode == 'pastel':
-            sat = int(sat * 0.5)
-            val = min(95, int(val * 1.05))
-        elif mode == 'vibrant':
-            sat = min(100, int(sat * 1.2))
-            val = min(100, val)
-        elif mode == 'earthy':
-            sat = int(sat * 0.7)
-            val = int(val * 0.8)
-        elif mode == 'monochrome':
-            # vary value only
-            hue = hue
-            sat = int(sat * 0.2)
-
-        # HSV -> RGB
-        c = hsv_to_rgb(hue/360.0, sat/100.0, val/100.0)
-        colors.append(hex_from_rgb([int(x*255) for x in c]))
-
-    return colors
 
 def hsv_to_rgb(h, s, v):
     # h in [0,1], s in [0,1], v in [0,1]
