@@ -546,19 +546,22 @@ if st.button('Generate palettes') or regen:
 
 # 팔레트 표시 부분에 감지 방법 추가:
 if 'palettes' in st.session_state:
-    palettes = st.session_state['palettes']
-    methods = st.session_state.get('palette_methods', [None] * len(palettes))
-    
-    for idx, (pal, method) in enumerate(zip(palettes, methods)):
-        st.subheader(f"Palette Option {idx+1}")
-        if method:
-            st.caption(f"🔍 {method}")  # 감지 방법 표시
+        palettes = st.session_state['palettes']
+        methods = st.session_state.get('palette_methods', [None] * len(palettes))
+        rows = []
         
-        cols = st.columns(len(pal))
-        for c, col in zip(pal, cols):
-            col.markdown(f"<div style='background:{c};padding:28px;border-radius:8px'></div>", unsafe_allow_html=True)
-            col.write(c)
-        rows.append([f'Option {idx+1}'] + pal)
+        for idx, pal in enumerate(palettes):
+            st.subheader(f"Palette Option {idx+1}")
+            
+            # 감지 방법 표시
+            if idx < len(methods) and methods[idx]:
+                st.caption(f"🔍 Detection: {methods[idx]}")
+            
+            cols = st.columns(len(pal))
+            for c, col in zip(pal, cols):
+                col.markdown(f"<div style='background:{c};padding:28px;border-radius:8px'></div>", unsafe_allow_html=True)
+                col.write(c)
+            rows.append([f'Option {idx+1}'] + pal)
 
         # CSV
         header = ['Option','Color1','Color2','Color3','Color4','Color5']
