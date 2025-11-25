@@ -684,20 +684,13 @@ with tabs[1]:
         st.write("Editable palette (you can add/remove/change colors):")
         import pandas as pd
         
-        # Create DataFrame with color column configured for color picker
+        # Create DataFrame
         editable_df = pd.DataFrame({"color": st.session_state[palette_key]})
         
-        # Use column_config to enable color picker in data_editor
+        # Simple data editor without ColorColumn (for older Streamlit versions)
         edited_df = st.data_editor(
             editable_df, 
             num_rows="dynamic",
-            column_config={
-                "color": st.column_config.ColorColumn(
-                    "Color",
-                    help="Click to pick a color",
-                    width="medium"
-                )
-            },
             hide_index=False,
             use_container_width=True
         )
@@ -705,13 +698,30 @@ with tabs[1]:
         # Update session state
         st.session_state[palette_key] = edited_df['color'].tolist()
 
-        # Color preview        
-        st.write("Preview Colors:")
+        # Color preview with inline color picker for each color
+        st.write("Preview & Edit Colors:")
         if len(edited_df) > 0:
-            prev_cols = st.columns(len(edited_df))
-            for c, col in zip(edited_df['color'], prev_cols):
-                col.markdown(f"<div style='background:{c};padding:28px;border-radius:6px;border:1px solid #ddd'></div>", unsafe_allow_html=True)
-                col.write(c)
+            for idx, color in enumerate(edited_df['color']):
+                col1, col2, col3 = st.columns([1, 2, 1])
+                with col1:
+                    st.markdown(f"<div style='background:{color};padding:20px;border-radius:6px;border:1px solid #ddd'></div>", unsafe_allow_html=True)
+                with col2:
+                    st.text(color)
+                with col3:
+                    # Individual color picker for each color
+                    new_color = st.color_picker(f"Edit", value=color, key=f"picker_{chosen_index}_{idx}")
+                    if new_color != color:
+                        st.session_state[palette_key][idx] = new_color
+                        st.rerun()
+
+        # Add new color section
+        st.write("---")
+        with st.expander("➕ Add New Color"):
+            new_color = st.color_picker("Pick a color to add", value="#5DADE2", key=f"new_color_{chosen_index}")
+            if st.button("Add to palette", key=f"add_btn_{chosen_index}"):
+                st.session_state[palette_key].append(new_color)
+                st.success(f"Added {new_color} ✅")
+                st.rerun()
 
         # Pattern options
         st.write("---")
