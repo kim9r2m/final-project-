@@ -679,16 +679,14 @@ with tabs[1]:
         # Initialize edited palette in session state
         palette_key = f'edited_palette_{chosen_index}'
         if palette_key not in st.session_state:
-            st.session_state[palette_key] = chosen_palette.copy()
+            st.session_state.palettes = []
 
         st.write("Editable palette (you can add/remove/change colors):")
-        import pandas as pd
-        
 
         # ▶ 데이터프레임 생성 (번호, color hex 포함)
         df = pd.DataFrame({
-            "index": list(range(len(st.session_state.palette))), 
-            "color": st.session_state.palette
+            "index": list(range(len(st.session_state.palettes))), 
+            "color": st.session_state.palettes
         })
 
         # ▶ 색 미리보기 컬럼 만들기 (HTML)
