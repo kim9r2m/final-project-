@@ -678,72 +678,72 @@ with tabs[1]:
 
         # Initialize edited palette in session state
         palette_key = f'edited_palette_{chosen_index}'
+        
         # --- Tap2: palette editor ---
 
-        if "palette" not in st.session_state:
-            st.session_state.palette = []
+    st.subheader("Edit Palette Colors")
 
-        df = pd.DataFrame({
-            "index": list(range(len(st.session_state.palette))),
-            "color": st.session_state.palette
-        })
-        edited_df = st.data_editor(
-            df,
-            key="palette_editor_table",
-            hide_index=True,
-            num_rows="dynamic"
-        )
+# 세션 상태 초기화 (선택한 팔레트 복사)
+    palette_key = f"palette_{chosen_index}"
+    if palette_key not in st.session_state:
+        st.session_state[palette_key] = chosen_palette.copy()
 
-# 데이터 반영
-        st.session_state.palette = edited_df["color"].tolist()
+    palette_list = st.session_state[palette_key]
 
-        # ▶ 색 미리보기 컬럼 만들기 (HTML)
-        def color_preview(hexcode):
-            return f"""<div style="width:40px; height:20px; background:{hexcode}; border-radius:4px;"></div>"""
+# DataFrame 생성 (미리보기 컬럼 없음)
+    df = pd.DataFrame({
+        "No": list(range(1, len(palette_list)+1)),
+        "Color": palette_list
+    })
 
-        df["preview"] = df["color"].apply(color_preview)
+# 편집 가능한 테이블
+    edited_df = st.data_editor(
+        df,
+        key=f"palette_editor_{chosen_index}",
+        hide_index=True,
+        column_config={
+            "No": st.column_config.NumberColumn("No.", width="small", disabled=True),
+            "Color": st.column_config.TextColumn("Hex Color")
+        },
+        use_container_width=True
+    )
 
-        # ▶ Edit 버튼 만들기 (각 행마다 고유 key 필요)
-        def edit_button(i):
-            return st.button("Edit", key=f"edit_{i}")
+# 변경된 값 반영
+    st.session_state[palette_key] = edited_df["Color"].tolist()
 
-        edited_df = st.data_editor(
-            df,
-            column_config={
-                "index": st.column_config.NumberColumn("No.", width="small", disabled=True),
-                "color": st.column_config.TextColumn("Color Hex"),
-                "preview": st.column_config.Column(
-                    "Preview",
-                    help="Color preview",
-                    width="small",
-                    disabled=True
-                ),
-            },
-            hide_index=True,
-            use_container_width=True
-        )
+# 각 색상 미리보기 + 개별 Edit 버튼
+    st.write("### Preview & Edit")
 
-# =========================
-# Edit 버튼 처리
-# =========================
-        for i in range(len(df)):
-            cols = st.columns([8, 1])
-            with cols[0]:
-                pass
-            with cols[1]:
-                if st.button("Edit", key=f"edit_color_{i}"):
-                    new_hex = st.color_picker(f"Select new color for {df.color[i]}", df.color[i], key=f"picker_{i}")
-                    st.session_state.palette[i] = new_hex
-                    st.rerun()
+    for i, hexcode in enumerate(st.session_state[palette_key]):
+        colA, colB, colC = st.columns([1, 2, 1])
 
-        # Add new color section
-        st.write("---")
-        with st.expander("➕ Add New Color"):
-            new_color = st.color_picker("Pick a color to add", value="#5DADE2", key=f"new_color_{chosen_index}")
-            if st.button("Add to palette", key=f"add_btn_{chosen_index}"):
-                st.session_state[palette_key].append(new_color)
-                st.success(f"Added {new_color} ✅")
+        with colA:
+            st.markdown(
+                f"<div style='width:45px;height:25px;background:{hexcode};border-radius:4px;border:1px solid #ccc'></div>",
+                unsafe_allow_html=True
+            )
+
+        with colB:
+            st.write(hexcode)
+
+        with colC:
+            if st.button("Edit", key=f"edit_btn_{chosen_index}_{i}"):
+                new_hex = st.color_picker(
+                    f"Pick new color for row {i+1}",
+                    hexcode,
+                    key=f"picker_{chosen_index}_{i}"
+                )
+                st.session_state[palette_key][i] = new_hex
                 st.rerun()
+
+# 추가 버튼
+    st.write("---")
+    with st.expander("➕ Add New Color"):
+        new_color = st.color_picker("Pick a color to add", value="#5DADE2", key=f"add_picker_{chosen_index}")
+        if st.button("Add", key=f"add_color_btn_{chosen_index}"):
+            st.session_state[palette_key].append(new_color)
+            st.success("Added!")
+            st.rerun()
 
         # Pattern options
         st.write("---")
