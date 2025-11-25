@@ -720,8 +720,7 @@ with tabs[1]:
                 ),
             },
             hide_index=True,
-            use_container_width=True,
-            unsafe_allow_html=True,
+            use_container_width=True
         )
 
 # =========================
