@@ -333,28 +333,6 @@ def biased_palette_for_keyword_3tier(keyword: str, mode: str, seed_offset: int =
     return colors, detection_method
 ```
 
----
-
-## 🎨 작동 방식
-
-### **입력: "tropical summer ocean"**
-
-1. **"tropical"** → 📚 `[150, 330, 30]` (청록, 핑크, 주황)
-2. **"summer"** → 📚 `[60, 200]` (노랑, 파랑)
-3. **"ocean"** → 📚 `[200, 210, 220]` (파랑 계열)
-
-### **결과 팔레트 (5색):**
-- Color 1: tropical 청록 (150°)
-- Color 2: summer 노랑 (60°)
-- Color 3: ocean 파랑 (200°)
-- Color 4: tropical 핑크 (330°)
-- Color 5: summer 파랑 (200°)
-
-### **감지 표시:**
-```
-🔍 Multi-keyword: 📚 'tropical' + 📚 'summer' + 📚 'ocean'
-    
-
 def hsv_to_rgb(h, s, v):
     # h in [0,1], s in [0,1], v in [0,1]
     if s == 0.0:
