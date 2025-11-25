@@ -104,6 +104,7 @@ def extract_colors_from_keyword_with_hf(keyword: str):
 def biased_palette_for_keyword_3tier(keyword: str, mode: str, seed_offset: int = 0, n_colors: int = 5):
     """
     3단계 Fallback 시스템으로 키워드 기반 팔레트 생성
+    복합 키워드 지원: "tropical summer ocean" → 각 단어에서 색상 추출
     
     1단계: Hugging Face API (AI 기반 색상 추출)
     2단계: 확장된 의미 사전 (100+ 키워드)
@@ -120,125 +121,153 @@ def biased_palette_for_keyword_3tier(keyword: str, mode: str, seed_offset: int =
         'cyan': 180, 'magenta': 300, 'lime': 80, 'indigo': 250
     }
     
-    base_hues = []
-    detection_method = None
-    
-    # ============================================
-    # 1단계: Hugging Face API 시도
-    # ============================================
-    detected_colors = extract_colors_from_keyword_with_hf(keyword)
-    
-    if detected_colors:
-        for color in detected_colors:
-            if color in color_hue_map:
-                base_hues.append(color_hue_map[color])
+    # 의미 사전
+    semantic_color_map = {
+        # 자연/환경
+        'forest': [120, 140, 100], 'jungle': [120, 140, 80],
+        'ocean': [200, 210, 220], 'sea': [200, 210, 180],
+        'mountain': [120, 210, 30], 'desert': [40, 50, 30],
+        'sky': [210, 200], 'sunset': [0, 20, 40, 350],
+        'sunrise': [20, 40, 60], 'beach': [180, 200, 60],
+        'tropical': [150, 330, 30], 'arctic': [180, 200, 0],
+        'savanna': [45, 60, 30], 'lake': [200, 210, 120],
+        'river': [200, 180, 120], 'meadow': [100, 120, 80],
+        'garden': [100, 120, 330], 'park': [120, 80, 200],
         
-        if base_hues:
-            detection_method = "🤗 AI (Hugging Face)"
+        # 계절
+        'spring': [80, 120, 330, 60], 'summer': [60, 200, 50, 180],
+        'autumn': [20, 30, 40, 10], 'fall': [20, 30, 40, 10],
+        'winter': [200, 210, 0, 180],
+        
+        # 시간대
+        'dawn': [20, 330, 200, 280], 'morning': [60, 200, 50],
+        'noon': [60, 180, 50], 'afternoon': [45, 30, 200],
+        'dusk': [270, 20, 340, 280], 'evening': [270, 340, 210],
+        'midnight': [240, 260, 0, 280], 'night': [240, 260, 210],
+        
+        # 음식
+        'cherry': [350, 0], 'strawberry': [350, 330], 'berry': [320, 340, 350],
+        'apple': [0, 120, 60], 'orange': [30, 40], 'lemon': [55, 65],
+        'lime': [80, 100], 'mint': [140, 160, 150], 'basil': [120, 140],
+        'chocolate': [20, 30, 25], 'coffee': [25, 30, 20], 'mocha': [25, 30],
+        'vanilla': [50, 60, 40], 'caramel': [35, 45], 'honey': [45, 55],
+        'lavender': [260, 280, 270], 'rose': [350, 330, 340],
+        'cinnamon': [25, 35], 'pumpkin': [30, 40], 'blueberry': [240, 250],
+        'grape': [270, 280], 'peach': [20, 330, 40],
+        
+        # 꽃
+        'sunflower': [50, 60, 45], 'daisy': [60, 50, 90],
+        'tulip': [350, 330, 60, 340], 'orchid': [280, 290, 330],
+        'jasmine': [60, 50, 80], 'hibiscus': [350, 330],
+        'magnolia': [330, 50, 280], 'peony': [330, 340, 350],
+        'iris': [270, 280, 240], 'lily': [60, 50, 330],
+        
+        # 보석/금속
+        'ruby': [350, 0, 340], 'emerald': [140, 150, 130],
+        'sapphire': [220, 230, 240], 'amethyst': [270, 280, 290],
+        'topaz': [40, 50, 45], 'pearl': [50, 0, 330],
+        'diamond': [180, 200, 0], 'jade': [150, 140, 160],
+        'opal': [180, 330, 270], 'coral': [10, 20, 350],
+        
+        # 감정/분위기
+        'calm': [200, 210, 180], 'peaceful': [150, 180, 210],
+        'energetic': [0, 50, 60, 30], 'vibrant': [0, 330, 60],
+        'cozy': [20, 30, 10, 40], 'warm': [0, 20, 40, 30],
+        'cool': [180, 200, 220, 210], 'fresh': [150, 120, 80, 180],
+        'romantic': [330, 340, 350, 320], 'elegant': [0, 270, 330],
+        'vintage': [30, 40, 200, 25], 'retro': [40, 200, 330],
+        'modern': [0, 200, 0, 210], 'minimal': [0, 200, 210],
+        'rustic': [30, 40, 120], 'industrial': [0, 210, 30],
+        'bohemian': [30, 330, 280, 120], 'luxury': [280, 45, 0],
+        
+        # 재료/텍스처
+        'wool': [40, 50, 30, 0], 'cotton': [50, 60, 200, 180],
+        'silk': [330, 270, 50, 280], 'linen': [60, 50, 120],
+        'denim': [210, 220, 200], 'leather': [30, 20, 25],
+        'suede': [40, 30, 280], 'velvet': [270, 280, 0],
+        'cashmere': [330, 280, 50], 'tweed': [30, 120, 40],
+        
+        # 날씨
+        'rainy': [200, 210, 0, 180], 'sunny': [50, 60, 180, 200],
+        'cloudy': [0, 200, 210, 180], 'snowy': [180, 200, 0, 210],
+        'stormy': [240, 0, 210, 260], 'foggy': [0, 200, 180],
+        'misty': [180, 200, 150], 'breezy': [180, 200, 120],
+        
+        # 도시/장소
+        'paris': [0, 330, 30, 210], 'tokyo': [350, 330, 0, 270],
+        'london': [0, 210, 30], 'newyork': [0, 210, 60],
+        'miami': [180, 330, 30], 'hawaii': [150, 330, 200],
+        'bali': [120, 330, 30], 'santorini': [210, 50, 330],
+        'morocco': [30, 350, 280], 'provence': [270, 60, 120],
+        
+        # 예술/스타일
+        'watercolor': [200, 330, 120, 280], 'pastel': [330, 200, 60],
+        'neon': [330, 180, 60, 280], 'monochrome': [0, 210, 240],
+        'rainbow': [0, 60, 120, 180, 240, 300],
+    }
     
     # ============================================
-    # 2단계: 확장된 의미 사전 (Semantic Mapping)
+    # 🆕 복합 키워드 분석
     # ============================================
-    if not base_hues:
-        semantic_color_map = {
-            # 자연/환경
-            'forest': [120, 140, 100], 'jungle': [120, 140, 80],
-            'ocean': [200, 210, 220], 'sea': [200, 210, 180],
-            'mountain': [120, 210, 30], 'desert': [40, 50, 30],
-            'sky': [210, 200], 'sunset': [0, 20, 40, 350],
-            'sunrise': [20, 40, 60], 'beach': [180, 200, 60],
-            'tropical': [150, 330, 30], 'arctic': [180, 200, 0],
-            'savanna': [45, 60, 30], 'lake': [200, 210, 120],
-            'river': [200, 180, 120], 'meadow': [100, 120, 80],
-            'garden': [100, 120, 330], 'park': [120, 80, 200],
-            
-            # 계절
-            'spring': [80, 120, 330, 60], 'summer': [60, 200, 50, 180],
-            'autumn': [20, 30, 40, 10], 'fall': [20, 30, 40, 10],
-            'winter': [200, 210, 0, 180],
-            
-            # 시간대
-            'dawn': [20, 330, 200, 280], 'morning': [60, 200, 50],
-            'noon': [60, 180, 50], 'afternoon': [45, 30, 200],
-            'dusk': [270, 20, 340, 280], 'evening': [270, 340, 210],
-            'midnight': [240, 260, 0, 280], 'night': [240, 260, 210],
-            
-            # 음식
-            'cherry': [350, 0], 'strawberry': [350, 330], 'berry': [320, 340, 350],
-            'apple': [0, 120, 60], 'orange': [30, 40], 'lemon': [55, 65],
-            'lime': [80, 100], 'mint': [140, 160, 150], 'basil': [120, 140],
-            'chocolate': [20, 30, 25], 'coffee': [25, 30, 20], 'mocha': [25, 30],
-            'vanilla': [50, 60, 40], 'caramel': [35, 45], 'honey': [45, 55],
-            'lavender': [260, 280, 270], 'rose': [350, 330, 340],
-            'cinnamon': [25, 35], 'pumpkin': [30, 40], 'blueberry': [240, 250],
-            'grape': [270, 280], 'peach': [20, 330, 40],
-            
-            # 꽃
-            'sunflower': [50, 60, 45], 'daisy': [60, 50, 90],
-            'tulip': [350, 330, 60, 340], 'orchid': [280, 290, 330],
-            'jasmine': [60, 50, 80], 'hibiscus': [350, 330],
-            'magnolia': [330, 50, 280], 'peony': [330, 340, 350],
-            'iris': [270, 280, 240], 'lily': [60, 50, 330],
-            
-            # 보석/금속
-            'ruby': [350, 0, 340], 'emerald': [140, 150, 130],
-            'sapphire': [220, 230, 240], 'amethyst': [270, 280, 290],
-            'topaz': [40, 50, 45], 'pearl': [50, 0, 330],
-            'diamond': [180, 200, 0], 'jade': [150, 140, 160],
-            'opal': [180, 330, 270], 'coral': [10, 20, 350],
-            
-            # 감정/분위기
-            'calm': [200, 210, 180], 'peaceful': [150, 180, 210],
-            'energetic': [0, 50, 60, 30], 'vibrant': [0, 330, 60],
-            'cozy': [20, 30, 10, 40], 'warm': [0, 20, 40, 30],
-            'cool': [180, 200, 220, 210], 'fresh': [150, 120, 80, 180],
-            'romantic': [330, 340, 350, 320], 'elegant': [0, 270, 330],
-            'vintage': [30, 40, 200, 25], 'retro': [40, 200, 330],
-            'modern': [0, 200, 0, 210], 'minimal': [0, 200, 210],
-            'rustic': [30, 40, 120], 'industrial': [0, 210, 30],
-            'bohemian': [30, 330, 280, 120], 'luxury': [280, 45, 0],
-            
-            # 재료/텍스처
-            'wool': [40, 50, 30, 0], 'cotton': [50, 60, 200, 180],
-            'silk': [330, 270, 50, 280], 'linen': [60, 50, 120],
-            'denim': [210, 220, 200], 'leather': [30, 20, 25],
-            'suede': [40, 30, 280], 'velvet': [270, 280, 0],
-            'cashmere': [330, 280, 50], 'tweed': [30, 120, 40],
-            
-            # 날씨
-            'rainy': [200, 210, 0, 180], 'sunny': [50, 60, 180, 200],
-            'cloudy': [0, 200, 210, 180], 'snowy': [180, 200, 0, 210],
-            'stormy': [240, 0, 210, 260], 'foggy': [0, 200, 180],
-            'misty': [180, 200, 150], 'breezy': [180, 200, 120],
-            
-            # 도시/장소
-            'paris': [0, 330, 30, 210], 'tokyo': [350, 330, 0, 270],
-            'london': [0, 210, 30], 'newyork': [0, 210, 60],
-            'miami': [180, 330, 30], 'hawaii': [150, 330, 200],
-            'bali': [120, 330, 30], 'santorini': [210, 50, 330],
-            'morocco': [30, 350, 280], 'provence': [270, 60, 120],
-            
-            # 예술/스타일
-            'watercolor': [200, 330, 120, 280], 'pastel': [330, 200, 60],
-            'neon': [330, 180, 60, 280], 'monochrome': [0, 210, 240],
-            'rainbow': [0, 60, 120, 180, 240, 300],
-        }
+    words = kw.split()
+    matched_keywords = []
+    all_hues = []
+    
+    # 각 단어별로 색상 매칭 시도
+    for word in words:
+        word_hues = []
+        word_method = None
         
+        # 1단계: HF API (전체 키워드로 한 번만)
+        if len(matched_keywords) == 0:
+            detected_colors = extract_colors_from_keyword_with_hf(keyword)
+            if detected_colors:
+                for color in detected_colors[:2]:  # 상위 2개만
+                    if color in color_hue_map:
+                        word_hues.append(color_hue_map[color])
+                if word_hues:
+                    word_method = "🤗 AI"
+        
+        # 2단계: 의미 사전
+        if not word_hues:
+            for key, hues in semantic_color_map.items():
+                if key in word:
+                    word_hues = hues[:2]  # 각 단어당 최대 2개
+                    word_method = f"📚 '{key}'"
+                    break
+        
+        # 3단계: 직접 색상명
+        if not word_hues:
+            for color, hue in color_hue_map.items():
+                if color in word:
+                    word_hues = [hue]
+                    word_method = f"🎨 '{color}'"
+                    break
+        
+        if word_hues:
+            matched_keywords.append({
+                'word': word,
+                'hues': word_hues,
+                'method': word_method
+            })
+            all_hues.extend(word_hues)
+    
+    # 매칭된 키워드가 없으면 전체를 하나로 처리
+    if not matched_keywords:
+        # 원래 로직 (단일 키워드)
         for key, hues in semantic_color_map.items():
             if key in kw:
-                base_hues = hues
-                detection_method = f"📚 Semantic Dictionary (matched: '{key}')"
+                all_hues = hues
+                matched_keywords.append({'word': keyword, 'hues': hues, 'method': f"📚 '{key}'"})
                 break
     
-    # ============================================
-    # 3단계: 기본 색상 매핑 (Direct Color Names)
-    # ============================================
-    if not base_hues:
-        for color, hue in color_hue_map.items():
-            if color in kw:
-                base_hues = [hue]
-                detection_method = f"🎨 Direct Color ('{color}')"
-                break
+    # 여전히 없으면 랜덤
+    detection_method = None
+    if matched_keywords:
+        methods_str = " + ".join([m['method'] for m in matched_keywords])
+        detection_method = f"🔍 Multi-keyword: {methods_str}"
+    else:
+        detection_method = "🎲 Random (no match found)"
     
     # ============================================
     # 팔레트 생성
@@ -247,45 +276,83 @@ def biased_palette_for_keyword_3tier(keyword: str, mode: str, seed_offset: int =
     rng = np.random.RandomState(seed)
     
     colors = []
-    for i in range(n_colors):
-        if base_hues:
-            # 감지된 색조 중 하나 선택 후 변형
-            base_hue = rng.choice(base_hues)
-            hue = (base_hue + rng.randint(-20, 20)) % 360
+    
+    if all_hues:
+        # 매칭된 색조들을 균등하게 분배
+        for i in range(n_colors):
+            base_hue = all_hues[i % len(all_hues)]
+            hue = (base_hue + rng.randint(-15, 15)) % 360
             sat = rng.randint(45, 95)
             val = rng.randint(45, 95)
-        else:
-            # 모든 단계 실패 시 완전 랜덤
+            
+            # Mode adjustments
+            if mode == 'normal':
+                pass
+            elif mode == 'pastel':
+                sat = int(sat * 0.5)
+                val = min(95, int(val * 1.05))
+            elif mode == 'vibrant':
+                sat = min(100, int(sat * 1.2))
+                val = min(100, val)
+            elif mode == 'earthy':
+                sat = int(sat * 0.7)
+                val = int(val * 0.8)
+            elif mode == 'monochrome':
+                sat = int(sat * 0.2)
+            
+            c = hsv_to_rgb(hue/360.0, sat/100.0, val/100.0)
+            colors.append(hex_from_rgb([int(x*255) for x in c]))
+    else:
+        # 랜덤 생성
+        for i in range(n_colors):
             hue = rng.randint(0, 360)
             sat = rng.randint(30, 95)
             val = rng.randint(35, 95)
-            detection_method = "🎲 Random (no match found)"
-        
-        # Mode adjustments
-        if mode == 'normal':
-            # 기본 값 그대로 유지 (조정 없음)
-            pass
-        elif mode == 'pastel':
-            sat = int(sat * 0.5)
-            val = min(95, int(val * 1.05))
-        elif mode == 'vibrant':
-            sat = min(100, int(sat * 1.2))
-            val = min(100, val)
-        elif mode == 'earthy':
-            sat = int(sat * 0.7)
-            val = int(val * 0.8)
-        elif mode == 'monochrome':
-            sat = int(sat * 0.2)
-        
-        # HSV -> RGB
-        c = hsv_to_rgb(hue/360.0, sat/100.0, val/100.0)
-        colors.append(hex_from_rgb([int(x*255) for x in c]))
+            
+            if mode == 'normal':
+                pass
+            elif mode == 'pastel':
+                sat = int(sat * 0.5)
+                val = min(95, int(val * 1.05))
+            elif mode == 'vibrant':
+                sat = min(100, int(sat * 1.2))
+                val = min(100, val)
+            elif mode == 'earthy':
+                sat = int(sat * 0.7)
+                val = int(val * 0.8)
+            elif mode == 'monochrome':
+                sat = int(sat * 0.2)
+            
+            c = hsv_to_rgb(hue/360.0, sat/100.0, val/100.0)
+            colors.append(hex_from_rgb([int(x*255) for x in c]))
     
-    # 디버그 정보 출력
+    # 디버그 정보
     if detection_method:
         print(f"Detection: {detection_method} for keyword '{keyword}'")
     
-    return colors, detection_method  # 감지 방법도 함께 반환
+    return colors, detection_method
+```
+
+---
+
+## 🎨 작동 방식
+
+### **입력: "tropical summer ocean"**
+
+1. **"tropical"** → 📚 `[150, 330, 30]` (청록, 핑크, 주황)
+2. **"summer"** → 📚 `[60, 200]` (노랑, 파랑)
+3. **"ocean"** → 📚 `[200, 210, 220]` (파랑 계열)
+
+### **결과 팔레트 (5색):**
+- Color 1: tropical 청록 (150°)
+- Color 2: summer 노랑 (60°)
+- Color 3: ocean 파랑 (200°)
+- Color 4: tropical 핑크 (330°)
+- Color 5: summer 파랑 (200°)
+
+### **감지 표시:**
+```
+🔍 Multi-keyword: 📚 'tropical' + 📚 'summer' + 📚 'ocean'
     
 
 def hsv_to_rgb(h, s, v):
