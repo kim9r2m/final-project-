@@ -280,12 +280,49 @@ def biased_palette_for_keyword_3tier(keyword: str, mode: str, seed_offset: int =
     
     colors = []
     
+    # 🌈 레인보우 키워드 체크
+    is_rainbow = 'rainbow' in kw
+    
     # 🎨 무채색 키워드 체크
     is_white = 'white' in kw
     is_black = 'black' in kw
     is_gray = 'gray' in kw or 'grey' in kw
     
-    if is_white or is_black or is_gray:
+    if is_rainbow:
+        # 🌈 무지개 팔레트: 고른 색조 분포
+        rainbow_hues = [0, 60, 120, 180, 240, 300]  # 빨, 주황, 노랑, 초록, 파랑, 보라
+        
+        for i in range(n_colors):
+            # 무지개 색조를 순환하며 선택
+            base_hue = rainbow_hues[i % len(rainbow_hues)]
+            # 약간의 변화 추가
+            hue = (base_hue + rng.randint(-10, 10)) % 360
+            
+            # 선명한 색상
+            sat = rng.randint(70, 100)
+            val = rng.randint(70, 100)
+            
+            # Mode adjustments
+            if mode == 'normal':
+                pass
+            elif mode == 'pastel':
+                sat = int(sat * 0.5)
+                val = min(95, int(val * 1.05))
+            elif mode == 'vibrant':
+                sat = min(100, int(sat * 1.2))
+                val = min(100, val)
+            elif mode == 'earthy':
+                sat = int(sat * 0.7)
+                val = int(val * 0.8)
+            elif mode == 'monochrome':
+                sat = int(sat * 0.2)
+            
+            c = hsv_to_rgb(hue/360.0, sat/100.0, val/100.0)
+            colors.append(hex_from_rgb([int(x*255) for x in c]))
+        
+        detection_method = "🌈 Rainbow spectrum"
+    
+    elif is_white or is_black or is_gray:
         # 무채색 팔레트 생성
         for i in range(n_colors):
             hue = 0  # 색조 무관
@@ -366,7 +403,7 @@ def biased_palette_for_keyword_3tier(keyword: str, mode: str, seed_offset: int =
         print(f"Detection: {detection_method} for keyword '{keyword}'")
     
     return colors, detection_method
-
+    
 def hsv_to_rgb(h, s, v):
     # h in [0,1], s in [0,1], v in [0,1]
     if s == 0.0:
