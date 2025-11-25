@@ -681,7 +681,7 @@ with tabs[1]:
         # --- Tap2: palette editor ---
 
         if "palette" not in st.session_state:
-        st.session_state.palette = []
+            st.session_state.palette = []
 
         df = pd.DataFrame({
             "index": list(range(len(st.session_state.palette))),
