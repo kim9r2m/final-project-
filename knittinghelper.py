@@ -116,10 +116,13 @@ def biased_palette_for_keyword_3tier(keyword: str, mode: str, seed_offset: int =
     color_hue_map = {
         'red': 0, 'orange': 30, 'yellow': 60, 'green': 120,
         'blue': 210, 'purple': 270, 'pink': 330, 'brown': 30,
-        'white': 0, 'black': 0, 'grey': 0, 'gray': 0,
+        'grey': 0, 'gray': 0,
         'violet': 280, 'turquoise': 180, 'gold': 45, 'silver': 0,
         'cyan': 180, 'magenta': 300, 'lime': 80, 'indigo': 250
     }
+    
+    # ✨ white/black은 특별 처리 (무채색)
+    achromatic_colors = ['white', 'black']
     
     # 의미 사전
     semantic_color_map = {
@@ -277,16 +280,42 @@ def biased_palette_for_keyword_3tier(keyword: str, mode: str, seed_offset: int =
     
     colors = []
     
-    if all_hues:
+    # 🎨 무채색 키워드 체크
+    is_white = 'white' in kw
+    is_black = 'black' in kw
+    is_gray = 'gray' in kw or 'grey' in kw
+    
+    if is_white or is_black or is_gray:
+        # 무채색 팔레트 생성
+        for i in range(n_colors):
+            hue = 0  # 색조 무관
+            sat = 0  # 채도 0 (무채색)
+            
+            if is_white:
+                # 밝은 회색~흰색
+                val = rng.randint(85, 100)
+            elif is_black:
+                # 검정~어두운 회색
+                val = rng.randint(0, 30)
+            else:  # gray
+                # 중간 회색
+                val = rng.randint(40, 70)
+            
+            c = hsv_to_rgb(hue/360.0, sat/100.0, val/100.0)
+            colors.append(hex_from_rgb([int(x*255) for x in c]))
+        
+        detection_method = f"⚪ Achromatic ('{kw}')"
+    
+    elif all_hues:
         # 매칭된 색조들을 사용하되, 더 큰 변화 추가
         hue_variation = 20 + (seed_offset % 3) * 10  # 20, 30, 40도 변화
         
         for i in range(n_colors):
             base_hue = all_hues[i % len(all_hues)]
-            # 🆕 변화 범위를 동적으로 조정
+            # 변화 범위를 동적으로 조정
             hue = (base_hue + rng.randint(-hue_variation, hue_variation)) % 360
             
-            # 🆕 채도와 명도도 더 다양하게
+            # 채도와 명도도 더 다양하게
             sat = rng.randint(40, 100)
             val = rng.randint(40, 100)
             
@@ -307,6 +336,7 @@ def biased_palette_for_keyword_3tier(keyword: str, mode: str, seed_offset: int =
             
             c = hsv_to_rgb(hue/360.0, sat/100.0, val/100.0)
             colors.append(hex_from_rgb([int(x*255) for x in c]))
+    
     else:
         # 랜덤 생성
         for i in range(n_colors):
