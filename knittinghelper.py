@@ -331,7 +331,6 @@ def biased_palette_for_keyword_3tier(keyword: str, mode: str, seed_offset: int =
         print(f"Detection: {detection_method} for keyword '{keyword}'")
     
     return colors, detection_method
-```
 
 def hsv_to_rgb(h, s, v):
     # h in [0,1], s in [0,1], v in [0,1]
