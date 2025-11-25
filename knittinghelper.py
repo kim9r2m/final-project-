@@ -6,6 +6,7 @@
 # - Convert Image to Pattern: upload image -> pixelate -> extract palette -> preview + CSV download
 
 import streamlit as st
+import pandas as pd
 import requests
 import hashlib
 import io
@@ -683,35 +684,52 @@ with tabs[1]:
         st.write("Editable palette (you can add/remove/change colors):")
         import pandas as pd
         
-        # Create DataFrame
-        editable_df = pd.DataFrame({"color": st.session_state[palette_key]})
-        
-        # Simple data editor without ColorColumn (for older Streamlit versions)
-        edited_df = st.data_editor(
-            editable_df, 
-            num_rows="dynamic",
-            hide_index=False,
-            use_container_width=True
-        )
-        
-        # Update session state
-        st.session_state[palette_key] = edited_df['color'].tolist()
 
-        # Color preview with inline color picker for each color
-        st.write("Preview & Edit Colors:")
-        if len(edited_df) > 0:
-            for idx, color in enumerate(edited_df['color']):
-                col1, col2, col3 = st.columns([1, 2, 1])
-                with col1:
-                    st.markdown(f"<div style='background:{color};padding:20px;border-radius:6px;border:1px solid #ddd'></div>", unsafe_allow_html=True)
-                with col2:
-                    st.text(color)
-                with col3:
-                    # Individual color picker for each color
-                    new_color = st.color_picker(f"Edit", value=color, key=f"picker_{chosen_index}_{idx}")
-                    if new_color != color:
-                        st.session_state[palette_key][idx] = new_color
-                        st.rerun()
+        # ▶ 데이터프레임 생성 (번호, color hex 포함)
+        df = pd.DataFrame({
+            "index": list(range(len(st.session_state.palette))), 
+            "color": st.session_state.palette
+        })
+
+        # ▶ 색 미리보기 컬럼 만들기 (HTML)
+        def color_preview(hexcode):
+            return f"""<div style="width:40px; height:20px; background:{hexcode}; border-radius:4px;"></div>"""
+
+        df["preview"] = df["color"].apply(color_preview)
+
+        # ▶ Edit 버튼 만들기 (각 행마다 고유 key 필요)
+        def edit_button(i):
+            return st.button("Edit", key=f"edit_{i}")
+
+        edited_df = st.data_editor(
+            df,
+            column_config={
+                "index": st.column_config.NumberColumn("No.", width="small", disabled=True),
+                "color": st.column_config.TextColumn("Color Hex"),
+                "preview": st.column_config.Column(
+                    "Preview",
+                    help="Color preview",
+                    width="small",
+                    disabled=True
+                ),
+            },
+            hide_index=True,
+            use_container_width=True,
+            unsafe_allow_html=True,
+        )
+
+# =========================
+# Edit 버튼 처리
+# =========================
+        for i in range(len(df)):
+            cols = st.columns([8, 1])
+            with cols[0]:
+                pass
+            with cols[1]:
+                if st.button("Edit", key=f"edit_color_{i}"):
+                    new_hex = st.color_picker(f"Select new color for {df.color[i]}", df.color[i], key=f"picker_{i}")
+                    st.session_state.palette[i] = new_hex
+                    st.rerun()
 
         # Add new color section
         st.write("---")
