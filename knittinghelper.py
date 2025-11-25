@@ -948,8 +948,10 @@ with tabs[2]:
         color_mode = st.selectbox(
             "Color mode",
             ["color", "achromatic"],
-            index=0
+            index=0,
+            key="animal_color_mode"
         )
+
 
         if st.button('Convert to pixel pattern'):
             try:
@@ -999,6 +1001,7 @@ with tabs[3]:
         "Color mode",
         ["color", "achromatic"],
         index=0
+        key="convert_color_mode"
     )
 
     if uploaded and st.button('Generate pattern'):
