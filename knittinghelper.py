@@ -678,72 +678,40 @@ with tabs[1]:
 
         # Initialize edited palette in session state
         palette_key = f'edited_palette_{chosen_index}'
+        if palette_key not in st.session_state:
+            st.session_state[palette_key] = chosen_palette.copy()
+
+        st.write("Editable palette (you can add/remove/change colors):")
+        import pandas as pd
         
-        # --- Tap2: palette editor ---
-
-    st.subheader("Edit Palette Colors")
-
-# 세션 상태 초기화 (선택한 팔레트 복사)
-    palette_key = f"palette_{chosen_index}"
-    if palette_key not in st.session_state:
-        st.session_state[palette_key] = chosen_palette.copy()
-
-    palette_list = st.session_state[palette_key]
-
-# DataFrame 생성 (미리보기 컬럼 없음)
-    df = pd.DataFrame({
-        "No": list(range(1, len(palette_list)+1)),
-        "Color": palette_list
-    })
-
-# 편집 가능한 테이블
-    edited_df = st.data_editor(
-        df,
-        key=f"palette_editor_{chosen_index}",
-        hide_index=True,
-        column_config={
-            "No": st.column_config.NumberColumn("No.", width="small", disabled=True),
-            "Color": st.column_config.TextColumn("Hex Color")
-        },
-        use_container_width=True
-    )
-
-# 변경된 값 반영
-    st.session_state[palette_key] = edited_df["Color"].tolist()
-
-# 각 색상 미리보기 + 개별 Edit 버튼
-    st.write("### Preview & Edit")
-
-    for i, hexcode in enumerate(st.session_state[palette_key]):
-        colA, colB, colC = st.columns([1, 2, 1])
-
-        with colA:
-            st.markdown(
-                f"<div style='width:45px;height:25px;background:{hexcode};border-radius:4px;border:1px solid #ccc'></div>",
-                unsafe_allow_html=True
-            )
-
-        with colB:
-            st.write(hexcode)
-
-        with colC:
-            if st.button("Edit", key=f"edit_btn_{chosen_index}_{i}"):
-                new_hex = st.color_picker(
-                    f"Pick new color for row {i+1}",
-                    hexcode,
-                    key=f"picker_{chosen_index}_{i}"
+        # Create DataFrame with color column configured for color picker
+        editable_df = pd.DataFrame({"color": st.session_state[palette_key]})
+        
+        # Use column_config to enable color picker in data_editor
+        edited_df = st.data_editor(
+            editable_df, 
+            num_rows="dynamic",
+            column_config={
+                "color": st.column_config.ColorColumn(
+                    "Color",
+                    help="Click to pick a color",
+                    width="medium"
                 )
-                st.session_state[palette_key][i] = new_hex
-                st.rerun()
+            },
+            hide_index=False,
+            use_container_width=True
+        )
+        
+        # Update session state
+        st.session_state[palette_key] = edited_df['color'].tolist()
 
-# 추가 버튼
-    st.write("---")
-    with st.expander("➕ Add New Color"):
-        new_color = st.color_picker("Pick a color to add", value="#5DADE2", key=f"add_picker_{chosen_index}")
-        if st.button("Add", key=f"add_color_btn_{chosen_index}"):
-            st.session_state[palette_key].append(new_color)
-            st.success("Added!")
-            st.rerun()
+        # Color preview        
+        st.write("Preview Colors:")
+        if len(edited_df) > 0:
+            prev_cols = st.columns(len(edited_df))
+            for c, col in zip(edited_df['color'], prev_cols):
+                col.markdown(f"<div style='background:{c};padding:28px;border-radius:6px;border:1px solid #ddd'></div>", unsafe_allow_html=True)
+                col.write(c)
 
         # Pattern options
         st.write("---")
