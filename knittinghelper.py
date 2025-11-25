@@ -678,16 +678,24 @@ with tabs[1]:
 
         # Initialize edited palette in session state
         palette_key = f'edited_palette_{chosen_index}'
-        if palette_key not in st.session_state:
-            st.session_state.palettes = []
+        # --- Tap2: palette editor ---
 
-        st.write("Editable palette (you can add/remove/change colors):")
+        if "palette" not in st.session_state:
+        st.session_state.palette = []
 
-        # ▶ 데이터프레임 생성 (번호, color hex 포함)
         df = pd.DataFrame({
-            "index": list(range(len(st.session_state.palettes))), 
-            "color": st.session_state.palettes
+            "index": list(range(len(st.session_state.palette))),
+            "color": st.session_state.palette
         })
+        edited_df = st.data_editor(
+            df,
+            key="palette_editor_table",
+            hide_index=True,
+            num_rows="dynamic"
+        )
+
+# 데이터 반영
+        st.session_state.palette = edited_df["color"].tolist()
 
         # ▶ 색 미리보기 컬럼 만들기 (HTML)
         def color_preview(hexcode):
