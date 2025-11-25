@@ -278,12 +278,17 @@ def biased_palette_for_keyword_3tier(keyword: str, mode: str, seed_offset: int =
     colors = []
     
     if all_hues:
-        # 매칭된 색조들을 균등하게 분배
+        # 매칭된 색조들을 사용하되, 더 큰 변화 추가
+        hue_variation = 20 + (seed_offset % 3) * 10  # 20, 30, 40도 변화
+        
         for i in range(n_colors):
             base_hue = all_hues[i % len(all_hues)]
-            hue = (base_hue + rng.randint(-15, 15)) % 360
-            sat = rng.randint(45, 95)
-            val = rng.randint(45, 95)
+            # 🆕 변화 범위를 동적으로 조정
+            hue = (base_hue + rng.randint(-hue_variation, hue_variation)) % 360
+            
+            # 🆕 채도와 명도도 더 다양하게
+            sat = rng.randint(40, 100)
+            val = rng.randint(40, 100)
             
             # Mode adjustments
             if mode == 'normal':
@@ -306,8 +311,8 @@ def biased_palette_for_keyword_3tier(keyword: str, mode: str, seed_offset: int =
         # 랜덤 생성
         for i in range(n_colors):
             hue = rng.randint(0, 360)
-            sat = rng.randint(30, 95)
-            val = rng.randint(35, 95)
+            sat = rng.randint(30, 100)
+            val = rng.randint(35, 100)
             
             if mode == 'normal':
                 pass
@@ -445,7 +450,6 @@ st.title("🧶 Knitting & Crochet Helper")
 tabs = st.tabs(["🤖 AI Helper", "🎨 Color combination helper", "🐶🐱 Animal pattern design helper", "🏞️ Convert image to pattern"])
 
 # ---------------- Tab 1: AI Helper ----------------
-# ---------------- Tab 1: AI Helper ----------------
 with tabs[0]:
     st.header("AI Helper — Knitting & Crochet Expert")
     st.write("Ask craft questions and get friendly, practical guidance.")
@@ -522,15 +526,16 @@ with tabs[1]:
             palettes = []
             methods = []
             for i in range(3):
+                # 🆕 각 옵션마다 더 큰 변화를 주기 위해 seed 값 크게 증가
                 pal, method = biased_palette_for_keyword_3tier(
                     keyword, 
                     mode, 
-                    seed_offset=st.session_state['palette_seed']+i, 
+                    seed_offset=st.session_state['palette_seed'] * 100 + i * 1000,  # ⭐ 변경
                     n_colors=5
                 )
                 palettes.append(pal)
                 methods.append(method)
-        
+            
             st.session_state['palettes'] = palettes
             st.session_state['palette_methods'] = methods
 
