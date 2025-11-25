@@ -1000,7 +1000,7 @@ with tabs[3]:
     color_mode = st.selectbox(
         "Color mode",
         ["color", "achromatic"],
-        index=0
+        index=0,
         key="convert_color_mode"
     )
 
