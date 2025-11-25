@@ -480,8 +480,11 @@ def extract_palette_from_image(img: Image.Image, n_colors=8):
     return palette
 
 # Convert to pixel pattern (resized to target size then simplified colors)
-def convert_to_pixel_pattern_from_image(img: Image.Image, pixel_w: int, pixel_h: int, n_colors: int):
+def convert_to_pixel_pattern_from_image(img: Image.Image, pixel_w: int, pixel_h: int, n_colors: int, color_mode="color"):
     # crop square center for nicer aspect handling if desired, but we will simply resize to target
+    if color_mode == "achromatic":
+        img = img.convert("L").convert("RGB")
+
     small = img.convert('RGB').resize((pixel_w, pixel_h), resample=Image.BILINEAR)
     # simplify colors by clustering on small image
     palette = extract_palette_from_image(small, n_colors)
@@ -953,7 +956,7 @@ with tabs[2]:
                 r = requests.get(selected_url, timeout=15)
                 r.raise_for_status()
                 img = Image.open(io.BytesIO(r.content)).convert('RGB')
-                poster, palette = convert_to_pixel_pattern_from_image(img, pw, ph, n_colors)
+                poster, palette = convert_to_pixel_pattern_from_image(img, pw, ph, n_colors, color_mode)
                 st.image(poster, caption=f'{pw}x{ph} pixel pattern')
                 buf = io.BytesIO()
                 poster.save(buf, format='PNG')
@@ -1001,7 +1004,7 @@ with tabs[3]:
     if uploaded and st.button('Generate pattern'):
         try:
             img = Image.open(uploaded).convert('RGB')
-            poster, palette = convert_to_pixel_pattern_from_image(img, pw, ph, n_colors)
+            poster, palette = convert_to_pixel_pattern_from_image(img, pw, ph, n_colors, color_mode)
             st.image(poster, caption=f'{pw}x{ph} pixel pattern')
 
             buf = io.BytesIO()
