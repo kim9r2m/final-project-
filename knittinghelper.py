@@ -942,6 +942,12 @@ with tabs[2]:
             pw = ph = 24
         n_colors = st.slider('Number of colors (simplify)', min_value=2, max_value=30, value=10)
 
+        color_mode = st.selectbox(
+            "Color mode",
+            ["color", "achromatic"],
+            index=0
+        )
+
         if st.button('Convert to pixel pattern'):
             try:
                 r = requests.get(selected_url, timeout=15)
@@ -985,6 +991,12 @@ with tabs[3]:
     except Exception:
         pw = ph = 30
     n_colors = st.slider('Number of colors (simplify)', min_value=2, max_value=30, value=10, key='conv_colors')
+    
+    color_mode = st.selectbox(
+        "Color mode",
+        ["color", "achromatic"],
+        index=0
+    )
 
     if uploaded and st.button('Generate pattern'):
         try:
