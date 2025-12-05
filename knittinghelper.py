@@ -30,7 +30,7 @@ try:
 except Exception:
     SKLEARN_AVAILABLE = False
 
-st.set_page_config(page_title="Knitting & Crochet Helper", layout="wide")
+st.set_page_config(page_title="🧶 Knitting Pattern Designer 🧣", layout="wide")
 
 SYSTEM_PROMPT = (
     "You are a master of knitting and crochet. You understand yarn types, stitch techniques, and garment construction. "
