@@ -516,7 +516,7 @@ def convert_to_pixel_pattern_from_image(img: Image.Image, pixel_w: int, pixel_h:
     return canvas, palette
 
 # ---------------- UI ----------------
-st.title("🧶 Knitting & Crochet Helper")
+st.title("🧶 Knitting Pattern Designer 🧣")
 
 tabs = st.tabs(["🤖 AI Helper", "🎨 Color combination helper", "🐶🐱 Animal pattern design helper", "🏞️ Convert image to pattern"])
 
