@@ -681,50 +681,86 @@ with tabs[1]:
         if palette_key not in st.session_state:
             st.session_state[palette_key] = chosen_palette.copy()
 
-        st.write("Editable palette (you can add/remove/change colors):")
-        import pandas as pd
+        st.write("**Edit Palette Colors:**")
+        st.write("Click on the color picker to change each color, or add new colors below.")
         
-        # Create DataFrame
-        editable_df = pd.DataFrame({"color": st.session_state[palette_key]})
+        # ✨ 새로운 통합 색상 편집 테이블
+        colors_list = st.session_state[palette_key]
         
-        # Simple data editor without ColorColumn (for older Streamlit versions)
-        edited_df = st.data_editor(
-            editable_df, 
-            num_rows="dynamic",
-            hide_index=False,
-            use_container_width=True
-        )
+        # 테이블 헤더
+        header_cols = st.columns([0.5, 2, 2, 1.5, 0.8])
+        header_cols[0].markdown("**#**")
+        header_cols[1].markdown("**Color Code**")
+        header_cols[2].markdown("**Preview**")
+        header_cols[3].markdown("**Edit Color**")
+        header_cols[4].markdown("**Del**")
         
-        # Update session state
-        st.session_state[palette_key] = edited_df['color'].tolist()
-
-        # Color preview with inline color picker for each color
-        st.write("Preview & Edit Colors:")
-        if len(edited_df) > 0:
-            for idx, color in enumerate(edited_df['color']):
-                col1, col2, col3 = st.columns([1, 2, 1])
-                with col1:
-                    st.markdown(f"<div style='background:{color};padding:20px;border-radius:6px;border:1px solid #ddd'></div>", unsafe_allow_html=True)
-                with col2:
-                    st.text(color)
-                with col3:
-                    # Individual color picker for each color
-                    new_color = st.color_picker(f"Edit", value=color, key=f"picker_{chosen_index}_{idx}")
-                    if new_color != color:
-                        st.session_state[palette_key][idx] = new_color
-                        st.rerun()
-
-        # Add new color section
-        st.write("---")
-        with st.expander("➕ Add New Color"):
-            new_color = st.color_picker("Pick a color to add", value="#5DADE2", key=f"new_color_{chosen_index}")
-            if st.button("Add to palette", key=f"add_btn_{chosen_index}"):
+        st.markdown("---")
+        
+        # 각 색상별로 행 생성
+        colors_to_delete = []
+        for idx, color in enumerate(colors_list):
+            cols = st.columns([0.5, 2, 2, 1.5, 0.8])
+            
+            # 번호
+            cols[0].write(f"{idx}")
+            
+            # 색상 코드
+            cols[1].code(color, language=None)
+            
+            # 프리뷰
+            cols[2].markdown(
+                f"<div style='background:{color};padding:20px;border-radius:6px;border:1px solid #ddd;'></div>", 
+                unsafe_allow_html=True
+            )
+            
+            # Color Picker
+            new_color = cols[3].color_picker(
+                "Pick", 
+                value=color, 
+                key=f"edit_picker_{chosen_index}_{idx}",
+                label_visibility="collapsed"
+            )
+            
+            # 색상 변경 감지
+            if new_color != color:
+                st.session_state[palette_key][idx] = new_color
+                st.rerun()
+            
+            # 삭제 버튼
+            if cols[4].button("🗑️", key=f"del_{chosen_index}_{idx}"):
+                colors_to_delete.append(idx)
+        
+        # 삭제 처리
+        if colors_to_delete:
+            for idx in sorted(colors_to_delete, reverse=True):
+                st.session_state[palette_key].pop(idx)
+            st.rerun()
+        
+        st.markdown("---")
+        
+        # ➕ Add New Color 섹션
+        st.write("**Add New Color:**")
+        col_picker, col_btn = st.columns([2, 1])
+        
+        with col_picker:
+            new_color = st.color_picker(
+                "Pick a color to add", 
+                value="#5DADE2", 
+                key=f"new_color_{chosen_index}"
+            )
+        
+        with col_btn:
+            st.write("")  # 버튼 높이 맞추기
+            st.write("")
+            if st.button("➕ Add Color", key=f"add_btn_{chosen_index}"):
                 st.session_state[palette_key].append(new_color)
                 st.success(f"Added {new_color} ✅")
                 st.rerun()
 
         # Pattern options
         st.write("---")
+        st.write("**Generate Pattern:**")
         pattern_type = st.selectbox("Pattern type", ["random", "stripe", "heart", "star", "circle"])
         generate_pattern = st.button("Generate pattern")
 
@@ -770,14 +806,12 @@ with tabs[1]:
                     [0,0,1,1,1,0,0]
                 ]
 
-                # 캔버스 생성 (배경색은 첫 번째 색상)
-                bg_color = colors_list[0]
-                img = Image.new("RGB", (grid_size*cell_size, grid_size*cell_size), bg_color)
+                # 캔버스 생성
+                img = Image.new("RGB", (grid_size*cell_size, grid_size*cell_size), "white")
                 draw = ImageDraw.Draw(img)
 
                 # 패턴별 로직
                 if pattern_type == "stripe":
-                    # 각 가로줄마다 순환하며 색상 할당 (모든 색상 사용)
                     for row in range(grid_size):
                         row_color = colors_list[row % len(colors_list)]
                         for col in range(grid_size):
@@ -786,7 +820,6 @@ with tabs[1]:
                             draw.rectangle([x0,y0,x1,y1], fill=row_color)
 
                 elif pattern_type == "random":
-                    # 셔플된 색상 리스트를 반복 사용 (모든 색상 균등하게)
                     total_cells = grid_size * grid_size
                     shuffled_colors = colors_list * (total_cells // len(colors_list) + 1)
                     random.shuffle(shuffled_colors)
@@ -810,25 +843,21 @@ with tabs[1]:
                     mask_h = len(mask)
                     mask_w = len(mask[0])
                     
-                    # 🎨 배경색 랜덤 선택 (generate할 때마다 다르게)
                     bg_color = random.choice(colors_list)
                     
-                    # 배경 먼저 채우기
                     for row in range(grid_size):
                         for col in range(grid_size):
                             x0, y0 = col*cell_size, row*cell_size
                             x1, y1 = x0+cell_size, y0+cell_size
                             draw.rectangle([x0,y0,x1,y1], fill=bg_color)
                     
-                    # 🎯 도형 개수를 팔레트 색상 개수에 맞춤
                     num_shapes = max(len(colors_list), 10)
                     placed_positions = []
                     max_attempts = 200
                     attempts = 0
                     
-                    # 배경색을 제외한 나머지 색상들로 순환
                     available_colors = [c for c in colors_list if c != bg_color]
-                    if not available_colors:  # 모든 색상이 같은 경우
+                    if not available_colors:
                         available_colors = colors_list
                     shape_color_idx = 0
                     
@@ -848,8 +877,6 @@ with tabs[1]:
                         
                         if not overlaps:
                             placed_positions.append((start_row, start_col))
-                            
-                            # 순환 방식으로 색상 선택 (배경 제외)
                             shape_color = available_colors[shape_color_idx % len(available_colors)]
                             shape_color_idx += 1
                             
@@ -864,7 +891,8 @@ with tabs[1]:
                                             x1 = x0 + cell_size
                                             y1 = y0 + cell_size
                                             draw.rectangle([x0,y0,x1,y1], fill=shape_color)
-                # 격자선 그리기 
+
+                # 격자선 그리기
                 for i in range(grid_size+1):
                     draw.line([(i*cell_size, 0), (i*cell_size, grid_size*cell_size)], fill=(0,0,0), width=1)
                     draw.line([(0, i*cell_size), (grid_size*cell_size, i*cell_size)], fill=(0,0,0), width=1)
@@ -881,6 +909,7 @@ with tabs[1]:
                 
                 all_colors = colors_list
                 color_columns = {f'Color{i+1}': color for i, color in enumerate(all_colors)}
+                import pandas as pd
                 pattern_df = pd.DataFrame([color_columns])
                 
                 color_preview_cols = st.columns(len(all_colors))
@@ -900,6 +929,7 @@ with tabs[1]:
                 )
                 
                 st.dataframe(pattern_df, use_container_width=True)
+
                 
 # ---------------- Tab 3: Animal pattern design helper ----------------
 with tabs[2]:
