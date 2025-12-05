@@ -41,7 +41,7 @@ SYSTEM_PROMPT = (
 
 # ---------------- Sidebar ----------------
 with st.sidebar:
-    st.title("🧶 Knitting & Crochet Helper 🧣")
+    st.title("🧶 Knitting Pattern Designer 🧣")
     st.markdown("**🤖 AI Helper**: Ask knitting & crochet questions and get expert guidance via OpenAI (optional API key).")
     st.markdown("**🎨 Color Combination Helper**: Enter a keyword, choose a palette mode, and get multiple palette suggestions. Preview and download CSV.")
     st.markdown("**🐶🐱 Animal Pattern Design Helper**: Browse dog & cat images, select one, convert to a simplified pixel pattern, and download palette CSV.")
