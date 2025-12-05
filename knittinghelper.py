@@ -525,7 +525,7 @@ with tabs[0]:
     st.header("AI Helper — Knitting & Crochet Expert")
     st.write("Ask craft questions and get friendly, practical guidance.")
 
-    api_key_input = st.text_input("OpenAI API key (optional)", type="password")
+    api_key_input = st.text_input("OpenAI API key", type="password")
     if api_key_input:
         os.environ['OPENAI_API_KEY'] = api_key_input
 
