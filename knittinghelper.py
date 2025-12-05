@@ -767,9 +767,16 @@ with tabs[1]:
         generate_pattern = st.button("Generate pattern")
 
         if generate_pattern:
+            # 🆕 패턴 생성 카운터 증가
+            if 'pattern_generated' not in st.session_state:
+                st.session_state['pattern_generated'] = 0
+            st.session_state['pattern_generated'] += 1
+            
             import numpy as np
             from PIL import Image, ImageDraw
             import random
+
+            # ... 나머지 코드는 동일
 
             grid_size = 30
             cell_size = 20
@@ -908,7 +915,12 @@ with tabs[1]:
                 if 'color_names' not in st.session_state:
                     st.session_state['color_names'] = {}
                 
-                color_name_key = f"color_names_{chosen_index}_{pattern_type}"
+                # 패턴 생성 시점의 고유 키 생성
+                if 'pattern_generated' not in st.session_state:
+                    st.session_state['pattern_generated'] = 0
+                
+                color_name_key = f"color_names_{chosen_index}_{pattern_type}_{st.session_state['pattern_generated']}"
+                
                 if color_name_key not in st.session_state['color_names']:
                     # 기본 이름: Color1, Color2, ...
                     st.session_state['color_names'][color_name_key] = [f'Color{i+1}' for i in range(len(all_colors))]
@@ -916,7 +928,6 @@ with tabs[1]:
                 # 색상 개수가 변경된 경우 이름 리스트 업데이트
                 current_names = st.session_state['color_names'][color_name_key]
                 if len(current_names) != len(all_colors):
-                    # 부족하면 추가, 많으면 자르기
                     if len(current_names) < len(all_colors):
                         for i in range(len(current_names), len(all_colors)):
                             current_names.append(f'Color{i+1}')
@@ -931,30 +942,36 @@ with tabs[1]:
                     col.write(color)
                 
                 st.write("**Edit Color Names:**")
-                st.write("Click on the name to edit it for the CSV export.")
+                st.write("Edit the names below (they will be used in the CSV export).")
                 
-                # 🎨 색상 이름 편집 테이블
+                # 🎨 색상 이름 편집 테이블 - on_change 사용
                 name_cols = st.columns([0.5] + [2] * len(all_colors))
                 name_cols[0].write("**Name**")
                 
-                edited_names = []
+                edited_names = st.session_state['color_names'][color_name_key].copy()
+                
                 for idx in range(len(all_colors)):
-                    current_name = st.session_state['color_names'][color_name_key][idx]
-                    new_name = name_cols[idx + 1].text_input(
+                    current_name = edited_names[idx]
+                    
+                    def update_name(idx=idx, key=color_name_key):
+                        """이름 업데이트 콜백"""
+                        new_value = st.session_state[f"name_input_{key}_{idx}"]
+                        st.session_state['color_names'][key][idx] = new_value
+                    
+                    name_cols[idx + 1].text_input(
                         f"Name {idx}",
                         value=current_name,
                         key=f"name_input_{color_name_key}_{idx}",
-                        label_visibility="collapsed"
+                        label_visibility="collapsed",
+                        on_change=update_name,
+                        args=(idx, color_name_key)
                     )
-                    edited_names.append(new_name)
-                
-                # 이름 업데이트
-                st.session_state['color_names'][color_name_key] = edited_names
                 
                 st.write("---")
                 
                 # CSV 생성 (수정된 이름 사용)
-                color_columns = {edited_names[i]: all_colors[i] for i in range(len(all_colors))}
+                final_names = st.session_state['color_names'][color_name_key]
+                color_columns = {final_names[i]: all_colors[i] for i in range(len(all_colors))}
                 import pandas as pd
                 pattern_df = pd.DataFrame([color_columns])
                 
