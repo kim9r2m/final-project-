@@ -1015,7 +1015,7 @@ with tabs[2]:
         try:
             pw, ph = map(int, px_input.lower().split('x'))
         except Exception:
-            pw = ph = 24
+            pw = ph = 40
         n_colors = st.slider('Number of colors (simplify)', min_value=2, max_value=30, value=10)
 
         color_mode = st.selectbox(
@@ -1067,7 +1067,7 @@ with tabs[3]:
     try:
         pw, ph = map(int, px_input.lower().split('x'))
     except Exception:
-        pw = ph = 30
+        pw = ph = 40
     n_colors = st.slider('Number of colors (simplify)', min_value=2, max_value=30, value=10, key='conv_colors')
     
     color_mode = st.selectbox(
@@ -1106,14 +1106,3 @@ with tabs[3]:
         except Exception as e:
             st.error(f'Error generating pattern: {e}')
 
-# ---------------- Requirements ----------------
-# Save the following lines into requirements.txt for full functionality:
-# streamlit
-# requests
-# pillow
-# numpy
-# scikit-learn
-# openai  # optional for AI Helper
-# pandas
-
-# End of file
