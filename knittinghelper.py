@@ -1011,7 +1011,7 @@ with tabs[2]:
         st.image(selected_url, width=360)
 
         # pixel options
-        px_input = st.text_input('Pixel size (width x height)', value='24x24')
+        px_input = st.text_input('Pixel size (width x height)', value='40x40')
         try:
             pw, ph = map(int, px_input.lower().split('x'))
         except Exception:
@@ -1063,7 +1063,7 @@ with tabs[3]:
     st.write('Upload an image and convert it into a pixelated knitting/crochet pattern. Preview and download CSV of palette.')
 
     uploaded = st.file_uploader('Upload an image', type=['png','jpg','jpeg'])
-    px_input = st.text_input('Pixel size (width x height)', value='30x30', key='conv_px')
+    px_input = st.text_input('Pixel size (width x height)', value='40x40', key='conv_px')
     try:
         pw, ph = map(int, px_input.lower().split('x'))
     except Exception:
