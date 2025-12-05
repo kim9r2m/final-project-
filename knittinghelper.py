@@ -594,14 +594,21 @@ with tabs[1]:
         if not keyword.strip():
             st.warning('Please enter a keyword.')
         else:
+            # 🆕 키워드가 변경되었는지 체크
+            if 'last_keyword' not in st.session_state or st.session_state['last_keyword'] != keyword:
+                # 키워드가 바뀌면 edited_palette 세션 초기화
+                for key in list(st.session_state.keys()):
+                    if key.startswith('edited_palette_'):
+                        del st.session_state[key]
+                st.session_state['last_keyword'] = keyword
+            
             palettes = []
             methods = []
             for i in range(3):
-                # 🆕 각 옵션마다 더 큰 변화를 주기 위해 seed 값 크게 증가
                 pal, method = biased_palette_for_keyword_3tier(
                     keyword, 
                     mode, 
-                    seed_offset=st.session_state['palette_seed'] * 100 + i * 1000,  # ⭐ 변경
+                    seed_offset=st.session_state['palette_seed'] * 100 + i * 1000,
                     n_colors=5
                 )
                 palettes.append(pal)
@@ -672,7 +679,8 @@ with tabs[1]:
         chosen_index = st.selectbox(
             "Choose one palette to use for pattern generation",
             options=list(range(len(palettes))),
-            format_func=lambda x: f"Palette Option {x+1}"
+            format_func=lambda x: f"Palette Option {x+1}",
+            key="palette_selector"  # 고유 key 추가
         )
         chosen_palette = palettes[chosen_index]
 
@@ -683,9 +691,6 @@ with tabs[1]:
 
         st.write("**Edit Palette Colors:**")
         st.write("Click on the color picker to change each color, or add new colors below.")
-        
-        # ✨ 새로운 통합 색상 편집 테이블
-        colors_list = st.session_state[palette_key]
         
         # 테이블 헤더
         header_cols = st.columns([0.5, 2, 2, 1.5, 0.8])
@@ -698,7 +703,8 @@ with tabs[1]:
         st.markdown("---")
         
         # 각 색상별로 행 생성
-        colors_to_delete = []
+        colors_list = st.session_state[palette_key].copy()  # 복사본 사용
+        
         for idx, color in enumerate(colors_list):
             cols = st.columns([0.5, 2, 2, 1.5, 0.8])
             
@@ -718,7 +724,7 @@ with tabs[1]:
             new_color = cols[3].color_picker(
                 "Pick", 
                 value=color, 
-                key=f"edit_picker_{chosen_index}_{idx}",
+                key=f"edit_picker_{chosen_index}_{idx}_{color}",  # 🔧 고유 key (색상 코드 포함)
                 label_visibility="collapsed"
             )
             
@@ -727,15 +733,11 @@ with tabs[1]:
                 st.session_state[palette_key][idx] = new_color
                 st.rerun()
             
-            # 삭제 버튼
-            if cols[4].button("🗑️", key=f"del_{chosen_index}_{idx}"):
-                colors_to_delete.append(idx)
-        
-        # 삭제 처리
-        if colors_to_delete:
-            for idx in sorted(colors_to_delete, reverse=True):
-                st.session_state[palette_key].pop(idx)
-            st.rerun()
+            # 🔧 삭제 버튼 - 즉시 실행 방식으로 변경
+            if cols[4].button("🗑️", key=f"del_{chosen_index}_{idx}_{color}"):
+                # 해당 인덱스의 색상 삭제
+                del st.session_state[palette_key][idx]
+                st.rerun()
         
         st.markdown("---")
         
@@ -751,7 +753,7 @@ with tabs[1]:
             )
         
         with col_btn:
-            st.write("")  # 버튼 높이 맞추기
+            st.write("")
             st.write("")
             if st.button("➕ Add Color", key=f"add_btn_{chosen_index}"):
                 st.session_state[palette_key].append(new_color)
@@ -769,7 +771,6 @@ with tabs[1]:
             from PIL import Image, ImageDraw
             import random
 
-            # 격자 설정
             grid_size = 30
             cell_size = 20
             colors_list = st.session_state[palette_key]
@@ -806,11 +807,9 @@ with tabs[1]:
                     [0,0,1,1,1,0,0]
                 ]
 
-                # 캔버스 생성
                 img = Image.new("RGB", (grid_size*cell_size, grid_size*cell_size), "white")
                 draw = ImageDraw.Draw(img)
 
-                # 패턴별 로직
                 if pattern_type == "stripe":
                     for row in range(grid_size):
                         row_color = colors_list[row % len(colors_list)]
@@ -842,7 +841,6 @@ with tabs[1]:
                     
                     mask_h = len(mask)
                     mask_w = len(mask[0])
-                    
                     bg_color = random.choice(colors_list)
                     
                     for row in range(grid_size):
@@ -855,7 +853,6 @@ with tabs[1]:
                     placed_positions = []
                     max_attempts = 200
                     attempts = 0
-                    
                     available_colors = [c for c in colors_list if c != bg_color]
                     if not available_colors:
                         available_colors = colors_list
@@ -892,7 +889,6 @@ with tabs[1]:
                                             y1 = y0 + cell_size
                                             draw.rectangle([x0,y0,x1,y1], fill=shape_color)
 
-                # 격자선 그리기
                 for i in range(grid_size+1):
                     draw.line([(i*cell_size, 0), (i*cell_size, grid_size*cell_size)], fill=(0,0,0), width=1)
                     draw.line([(0, i*cell_size), (grid_size*cell_size, i*cell_size)], fill=(0,0,0), width=1)
@@ -903,7 +899,6 @@ with tabs[1]:
                 img.save(buf, format="PNG")
                 st.download_button("Download pattern image", data=buf.getvalue(), file_name=f"pattern_{pattern_type}.png", mime="image/png")
 
-                # Pattern Palette CSV (가로 형식)
                 st.write("---")
                 st.write("**Pattern Colors Used:**")
                 
