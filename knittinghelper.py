@@ -145,8 +145,8 @@ def biased_palette_for_keyword_3tier(keyword: str, mode: str, seed_offset: int =
         # 🆕 특별 이벤트
         'flower': [350, 0, 10, 330, 340, 50, 55, 60],  # 붉은 계열 + 노란 계열
         'flowers': [350, 0, 10, 330, 340, 50, 55, 60],  # 복수형
-        'christmas': [350, 0, 10, 120, 130, 140],  # 빨강 계열 + 초록 계열
-        'xmas': [350, 0, 10, 120, 130, 140],  # 약어
+        'christmas': [0, 350, 120, 130, 110, 140, 150, 10],  # 빨강+초록 균형
+        'xmas': [0, 350, 120, 130, 110, 140, 150, 10],
         # 시간대
         'dawn': [20, 330, 200, 280], 'morning': [60, 200, 50],
         'noon': [60, 180, 50], 'afternoon': [45, 30, 200],
@@ -485,33 +485,64 @@ def extract_palette_from_image(img: Image.Image, n_colors=8):
     return palette
 
 # Convert to pixel pattern (resized to target size then simplified colors)
-def convert_to_pixel_pattern_from_image(img: Image.Image, pixel_w: int, pixel_h: int, n_colors: int, color_mode="color"):
-    # crop square center for nicer aspect handling if desired, but we will simply resize to target
-    if color_mode == "achromatic":
-        img = img.convert("L").convert("RGB")
-
-    small = img.convert('RGB').resize((pixel_w, pixel_h), resample=Image.BILINEAR)
-    # simplify colors by clustering on small image
+def convert_to_pixel_pattern_from_image(img: Image.Image, pixel_w: int, pixel_h: int, n_colors: int, enhance_edges: bool = False):
+    """
+    이미지를 픽셀 패턴으로 변환
+    
+    Args:
+        img: 원본 이미지
+        pixel_w: 패턴 너비
+        pixel_h: 패턴 높이
+        n_colors: 색상 개수
+        enhance_edges: True면 윤곽선 강조 모드
+    """
+    from PIL import ImageFilter, ImageEnhance
+    
+    # RGB로 변환
+    img = img.convert('RGB')
+    
+    # 🆕 윤곽선 강조 모드
+    if enhance_edges:
+        # 1. 선명도 증가
+        enhancer = ImageEnhance.Sharpness(img)
+        img = enhancer.enhance(2.0)  # 2배 선명하게
+        
+        # 2. 대비 증가
+        enhancer = ImageEnhance.Contrast(img)
+        img = enhancer.enhance(1.3)  # 1.3배 대비
+        
+        # 3. 엣지 강조 필터
+        img = img.filter(ImageFilter.EDGE_ENHANCE_MORE)
+    
+    # 크기 조정
+    small = img.resize((pixel_w, pixel_h), resample=Image.BILINEAR)
+    
+    # 색상 단순화
     palette = extract_palette_from_image(small, n_colors)
 
-    # Map each pixel to nearest palette color
+    # 각 픽셀을 가장 가까운 팔레트 색상으로 매핑
     pal_rgb = np.array([[c[0],c[1],c[2]] for c in palette])
     arr = np.array(small)
     h,w,_ = arr.shape
     flat = arr.reshape((-1,3)).astype(int)
-    # compute distances
+    
+    # 거리 계산
     dists = np.sqrt(((flat[:,None,:] - pal_rgb[None,:,:])**2).sum(axis=2))
     nearest = dists.argmin(axis=1)
     new_flat = pal_rgb[nearest]
     new_img = new_flat.reshape((h,w,3)).astype(np.uint8)
+    
+    # 포스터 생성
     poster_cell = 24
     canvas = Image.new('RGB', (w*poster_cell, h*poster_cell), 'white')
     draw = ImageDraw.Draw(canvas)
+    
     for y in range(h):
         for x in range(w):
             col = tuple(new_img[y,x])
             draw.rectangle([x*poster_cell, y*poster_cell, (x+1)*poster_cell, (y+1)*poster_cell], fill=col)
-    # draw grid lines
+    
+    # 격자선
     for i in range(w+1):
         draw.line([(i*poster_cell,0),(i*poster_cell,h*poster_cell)], fill=(0,0,0), width=1)
     for j in range(h+1):
@@ -1067,6 +1098,9 @@ with tabs[2]:
             pw = ph = 40
         n_colors = st.slider('Number of colors (simplify)', min_value=2, max_value=30, value=10)
 
+        # 🆕 윤곽선 강조 옵션
+        enhance_edges = st.checkbox('✨ Enhance edges (clearer shapes)', value=False, help="Makes the pattern shapes more distinct")
+
         color_mode = st.selectbox(
             "Color mode",
             ["color", "achromatic"],
@@ -1080,7 +1114,7 @@ with tabs[2]:
                 r = requests.get(selected_url, timeout=15)
                 r.raise_for_status()
                 img = Image.open(io.BytesIO(r.content)).convert('RGB')
-                poster, palette = convert_to_pixel_pattern_from_image(img, pw, ph, n_colors, color_mode)
+                poster, palette = convert_to_pixel_pattern_from_image(img, pw, ph, n_colors, color_mode, enhance_edges)
                 st.image(poster, caption=f'{pw}x{ph} pixel pattern')
                 buf = io.BytesIO()
                 poster.save(buf, format='PNG')
@@ -1118,6 +1152,9 @@ with tabs[3]:
     except Exception:
         pw = ph = 40
     n_colors = st.slider('Number of colors (simplify)', min_value=2, max_value=30, value=10, key='conv_colors')
+
+    # 🆕 윤곽선 강조 옵션
+    enhance_edges = st.checkbox('✨ Enhance edges (clearer shapes)', value=False, key='conv_enhance', help="Makes the pattern shapes more distinct")
     
     color_mode = st.selectbox(
         "Color mode",
@@ -1129,7 +1166,7 @@ with tabs[3]:
     if uploaded and st.button('Generate pattern'):
         try:
             img = Image.open(uploaded).convert('RGB')
-            poster, palette = convert_to_pixel_pattern_from_image(img, pw, ph, n_colors, color_mode)
+            poster, palette = convert_to_pixel_pattern_from_image(img, pw, ph, n_colors, color_mode, enhance_edges)
             st.image(poster, caption=f'{pw}x{ph} pixel pattern')
 
             buf = io.BytesIO()
