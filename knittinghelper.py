@@ -596,11 +596,12 @@ with tabs[1]:
         else:
             # 🆕 키워드가 변경되었는지 체크
             if 'last_keyword' not in st.session_state or st.session_state['last_keyword'] != keyword:
-                # 키워드가 바뀌면 edited_palette 세션 초기화
+                # 키워드가 바뀌면 모든 편집 상태 초기화
                 for key in list(st.session_state.keys()):
-                    if key.startswith('edited_palette_'):
+                    if key.startswith('edited_palette_') or key.startswith('generated_pattern_'):
                         del st.session_state[key]
                 st.session_state['last_keyword'] = keyword
+                st.session_state['prev_chosen_index'] = 0  # 선택도 리셋
             
             palettes = []
             methods = []
@@ -675,20 +676,40 @@ with tabs[1]:
     if 'palettes' in st.session_state:
         palettes = st.session_state['palettes']
 
+        # 이전 선택 추적
+        if 'prev_chosen_index' not in st.session_state:
+            st.session_state['prev_chosen_index'] = 0
+
         # Choose palette
         chosen_index = st.selectbox(
             "Choose one palette to use for pattern generation",
             options=list(range(len(palettes))),
             format_func=lambda x: f"Palette Option {x+1}",
-            key="palette_selector"  # 고유 key 추가
+            key="palette_selector"
         )
+        
+        # 🆕 선택이 변경되었는지 확인
+        if st.session_state['prev_chosen_index'] != chosen_index:
+            # 선택이 바뀌면 편집된 팔레트 초기화
+            palette_key = f'edited_palette_{chosen_index}'
+            st.session_state[palette_key] = palettes[chosen_index].copy()
+            
+            # 생성된 패턴도 초기화
+            pattern_session_key = f"generated_pattern_{chosen_index}"
+            if pattern_session_key in st.session_state:
+                del st.session_state[pattern_session_key]
+            
+            # 이전 선택 업데이트
+            st.session_state['prev_chosen_index'] = chosen_index
+            st.rerun()
+
         chosen_palette = palettes[chosen_index]
 
         # Initialize edited palette in session state
         palette_key = f'edited_palette_{chosen_index}'
         if palette_key not in st.session_state:
             st.session_state[palette_key] = chosen_palette.copy()
-
+            
         st.write("**Edit Palette Colors:**")
         st.write("Click on the color picker to change each color, or add new colors below.")
         
