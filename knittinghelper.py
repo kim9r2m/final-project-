@@ -912,28 +912,22 @@ with tabs[1]:
                 all_colors = colors_list
                 
                 # 🆕 색상 이름 세션 관리
-                if 'color_names' not in st.session_state:
-                    st.session_state['color_names'] = {}
+                pattern_id = f"pattern_{chosen_index}_{pattern_type}_{hash(str(all_colors))}"
                 
-                # 패턴 생성 시점의 고유 키 생성
-                if 'pattern_generated' not in st.session_state:
-                    st.session_state['pattern_generated'] = 0
+                if 'pattern_color_names' not in st.session_state:
+                    st.session_state['pattern_color_names'] = {}
                 
-                color_name_key = f"color_names_{chosen_index}_{pattern_type}_{st.session_state['pattern_generated']}"
+                if pattern_id not in st.session_state['pattern_color_names']:
+                    # 기본 이름으로 초기화
+                    st.session_state['pattern_color_names'][pattern_id] = [f'Color{i+1}' for i in range(len(all_colors))]
                 
-                if color_name_key not in st.session_state['color_names']:
-                    # 기본 이름: Color1, Color2, ...
-                    st.session_state['color_names'][color_name_key] = [f'Color{i+1}' for i in range(len(all_colors))]
-                
-                # 색상 개수가 변경된 경우 이름 리스트 업데이트
-                current_names = st.session_state['color_names'][color_name_key]
-                if len(current_names) != len(all_colors):
-                    if len(current_names) < len(all_colors):
-                        for i in range(len(current_names), len(all_colors)):
-                            current_names.append(f'Color{i+1}')
+                # 색상 개수 확인 및 동기화
+                if len(st.session_state['pattern_color_names'][pattern_id]) != len(all_colors):
+                    if len(st.session_state['pattern_color_names'][pattern_id]) < len(all_colors):
+                        for i in range(len(st.session_state['pattern_color_names'][pattern_id]), len(all_colors)):
+                            st.session_state['pattern_color_names'][pattern_id].append(f'Color{i+1}')
                     else:
-                        current_names = current_names[:len(all_colors)]
-                    st.session_state['color_names'][color_name_key] = current_names
+                        st.session_state['pattern_color_names'][pattern_id] = st.session_state['pattern_color_names'][pattern_id][:len(all_colors)]
                 
                 # 색상 프리뷰
                 color_preview_cols = st.columns(len(all_colors))
@@ -942,37 +936,39 @@ with tabs[1]:
                     col.write(color)
                 
                 st.write("**Edit Color Names:**")
-                st.write("Edit the names below (they will be used in the CSV export).")
+                st.write("Double-click on a name cell to edit it. Changes are saved automatically.")
                 
-                # 🎨 색상 이름 편집 테이블 - on_change 사용
-                name_cols = st.columns([0.5] + [2] * len(all_colors))
-                name_cols[0].write("**Name**")
+                # 🎨 DataFrame으로 색상 이름 편집
+                import pandas as pd
                 
-                edited_names = st.session_state['color_names'][color_name_key].copy()
+                # 현재 이름들을 DataFrame으로 변환
+                names_dict = {f'Color {i+1}': st.session_state['pattern_color_names'][pattern_id][i] for i in range(len(all_colors))}
+                names_df = pd.DataFrame([names_dict])
                 
-                for idx in range(len(all_colors)):
-                    current_name = edited_names[idx]
-                    
-                    def update_name(idx=idx, key=color_name_key):
-                        """이름 업데이트 콜백"""
-                        new_value = st.session_state[f"name_input_{key}_{idx}"]
-                        st.session_state['color_names'][key][idx] = new_value
-                    
-                    name_cols[idx + 1].text_input(
-                        f"Name {idx}",
-                        value=current_name,
-                        key=f"name_input_{color_name_key}_{idx}",
-                        label_visibility="collapsed",
-                        on_change=update_name,
-                        args=(idx, color_name_key)
-                    )
+                # data_editor로 편집 가능하게
+                edited_names_df = st.data_editor(
+                    names_df,
+                    use_container_width=True,
+                    hide_index=True,
+                    key=f"name_editor_{pattern_id}",
+                    column_config={
+                        col: st.column_config.TextColumn(
+                            col,
+                            width="medium",
+                            help=f"Edit name for {col}"
+                        ) for col in names_df.columns
+                    }
+                )
+                
+                # 편집된 이름 저장
+                new_names = [edited_names_df.iloc[0][col] for col in edited_names_df.columns]
+                st.session_state['pattern_color_names'][pattern_id] = new_names
                 
                 st.write("---")
                 
-                # CSV 생성 (수정된 이름 사용)
-                final_names = st.session_state['color_names'][color_name_key]
+                # CSV 생성 (편집된 이름 사용)
+                final_names = st.session_state['pattern_color_names'][pattern_id]
                 color_columns = {final_names[i]: all_colors[i] for i in range(len(all_colors))}
-                import pandas as pd
                 pattern_df = pd.DataFrame([color_columns])
                 
                 csv_buf = io.StringIO()
