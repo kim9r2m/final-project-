@@ -839,19 +839,6 @@ with tabs[1]:
                             x1, y1 = x0+cell_size, y0+cell_size
                             draw.rectangle([x0,y0,x1,y1], fill=row_color)
 
-                elif pattern_type == "random":
-                    total_cells = grid_size * grid_size
-                    shuffled_colors = colors_list * (total_cells // len(colors_list) + 1)
-                    random.shuffle(shuffled_colors)
-                    idx = 0
-                    for row in range(grid_size):
-                        for col in range(grid_size):
-                            x0, y0 = col*cell_size, row*cell_size
-                            x1, y1 = x0+cell_size, y0+cell_size
-                            cell_color = shuffled_colors[idx]
-                            draw.rectangle([x0,y0,x1,y1], fill=cell_color)
-                            idx += 1
-
                 elif pattern_type in ["heart", "star", "circle"]:
                     if pattern_type == "heart":
                         mask = HEART_MASK_7
@@ -862,54 +849,62 @@ with tabs[1]:
                     
                     mask_h = len(mask)
                     mask_w = len(mask[0])
+                    
+                    # 배경색 선택
                     bg_color = random.choice(colors_list)
                     
+                    # 배경 먼저 채우기
                     for row in range(grid_size):
                         for col in range(grid_size):
                             x0, y0 = col*cell_size, row*cell_size
                             x1, y1 = x0+cell_size, y0+cell_size
                             draw.rectangle([x0,y0,x1,y1], fill=bg_color)
                     
-                    num_shapes = max(len(colors_list), 10)
-                    placed_positions = []
-                    max_attempts = 200
-                    attempts = 0
+                    # 🆕 3x3 그리드로 규칙적 배치
+                    num_shapes_per_row = 3
+                    num_shapes_per_col = 3
+                    total_shapes = num_shapes_per_row * num_shapes_per_col  # 9개
+                    
+                    # 사용 가능한 공간 계산
+                    available_space_h = grid_size - (num_shapes_per_row * mask_h)
+                    available_space_w = grid_size - (num_shapes_per_col * mask_w)
+                    
+                    # 여백 계산 (균등 분배)
+                    margin_h = available_space_h // (num_shapes_per_row + 1)
+                    margin_w = available_space_w // (num_shapes_per_col + 1)
+                    
+                    # 배경 제외 색상
                     available_colors = [c for c in colors_list if c != bg_color]
                     if not available_colors:
                         available_colors = colors_list
-                    shape_color_idx = 0
                     
-                    while len(placed_positions) < num_shapes and attempts < max_attempts:
-                        attempts += 1
-                        start_row = random.randint(0, grid_size - mask_h)
-                        start_col = random.randint(0, grid_size - mask_w)
-                        
-                        overlaps = False
-                        for prev_row, prev_col in placed_positions:
-                            if not (start_row + mask_h <= prev_row or 
-                                   start_row >= prev_row + mask_h or
-                                   start_col + mask_w <= prev_col or 
-                                   start_col >= prev_col + mask_w):
-                                overlaps = True
-                                break
-                        
-                        if not overlaps:
-                            placed_positions.append((start_row, start_col))
-                            shape_color = available_colors[shape_color_idx % len(available_colors)]
-                            shape_color_idx += 1
+                    shape_idx = 0
+                    
+                    # 3x3 그리드로 도형 배치
+                    for shape_row in range(num_shapes_per_row):
+                        for shape_col in range(num_shapes_per_col):
+                            # 도형 시작 위치 계산 (균등한 간격)
+                            start_row = margin_h * (shape_row + 1) + mask_h * shape_row
+                            start_col = margin_w * (shape_col + 1) + mask_w * shape_col
                             
+                            # 색상 순환
+                            shape_color = available_colors[shape_idx % len(available_colors)]
+                            shape_idx += 1
+                            
+                            # 마스크에 따라 도형 그리기
                             for mask_row in range(mask_h):
                                 for mask_col in range(mask_w):
                                     if mask[mask_row][mask_col] == 1:
                                         actual_row = start_row + mask_row
                                         actual_col = start_col + mask_col
+                                        
+                                        # 범위 체크
                                         if 0 <= actual_row < grid_size and 0 <= actual_col < grid_size:
                                             x0 = actual_col * cell_size
                                             y0 = actual_row * cell_size
                                             x1 = x0 + cell_size
                                             y1 = y0 + cell_size
                                             draw.rectangle([x0,y0,x1,y1], fill=shape_color)
-
                 for i in range(grid_size+1):
                     draw.line([(i*cell_size, 0), (i*cell_size, grid_size*cell_size)], fill=(0,0,0), width=1)
                     draw.line([(0, i*cell_size), (grid_size*cell_size, i*cell_size)], fill=(0,0,0), width=1)
