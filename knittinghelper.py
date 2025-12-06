@@ -767,16 +767,9 @@ with tabs[1]:
         generate_pattern = st.button("Generate pattern")
 
         if generate_pattern:
-            # 🆕 패턴 생성 카운터 증가
-            if 'pattern_generated' not in st.session_state:
-                st.session_state['pattern_generated'] = 0
-            st.session_state['pattern_generated'] += 1
-            
             import numpy as np
             from PIL import Image, ImageDraw
             import random
-
-            # ... 나머지 코드는 동일
 
             grid_size = 30
             cell_size = 20
@@ -900,91 +893,101 @@ with tabs[1]:
                     draw.line([(i*cell_size, 0), (i*cell_size, grid_size*cell_size)], fill=(0,0,0), width=1)
                     draw.line([(0, i*cell_size), (grid_size*cell_size, i*cell_size)], fill=(0,0,0), width=1)
 
-                st.image(img, caption=f"Generated {pattern_type.title()} Pattern (30x30)", use_column_width=True)
-
+                # 🆕 이미지를 세션에 저장
                 buf = io.BytesIO()
                 img.save(buf, format="PNG")
-                st.download_button("Download pattern image", data=buf.getvalue(), file_name=f"pattern_{pattern_type}.png", mime="image/png")
+                buf.seek(0)
+                
+                pattern_session_key = f"generated_pattern_{chosen_index}"
+                st.session_state[pattern_session_key] = {
+                    'image': buf.getvalue(),
+                    'colors': colors_list.copy(),
+                    'pattern_type': pattern_type
+                }
 
-                st.write("---")
-                st.write("**Pattern Colors Used:**")
-                
-                all_colors = colors_list
-                
-                # 🆕 색상 이름 세션 관리
-                pattern_id = f"pattern_{chosen_index}_{pattern_type}_{hash(str(all_colors))}"
-                
-                if 'pattern_color_names' not in st.session_state:
-                    st.session_state['pattern_color_names'] = {}
-                
-                if pattern_id not in st.session_state['pattern_color_names']:
-                    # 기본 이름으로 초기화
-                    st.session_state['pattern_color_names'][pattern_id] = [f'Color{i+1}' for i in range(len(all_colors))]
-                
-                # 색상 개수 확인 및 동기화
-                if len(st.session_state['pattern_color_names'][pattern_id]) != len(all_colors):
-                    if len(st.session_state['pattern_color_names'][pattern_id]) < len(all_colors):
-                        for i in range(len(st.session_state['pattern_color_names'][pattern_id]), len(all_colors)):
-                            st.session_state['pattern_color_names'][pattern_id].append(f'Color{i+1}')
-                    else:
-                        st.session_state['pattern_color_names'][pattern_id] = st.session_state['pattern_color_names'][pattern_id][:len(all_colors)]
-                
-                # 색상 프리뷰
-                color_preview_cols = st.columns(len(all_colors))
-                for idx, (col, color) in enumerate(zip(color_preview_cols, all_colors)):
-                    col.markdown(f"<div style='background:{color};padding:28px;border-radius:6px;border:1px solid #ddd'></div>", unsafe_allow_html=True)
-                    col.write(color)
-                
-                st.write("**Edit Color Names:**")
-                st.write("Double-click on a name cell to edit it. Changes are saved automatically.")
-                
-                # 🎨 DataFrame으로 색상 이름 편집
-                import pandas as pd
-                
-                # 현재 이름들을 DataFrame으로 변환
-                names_dict = {f'Color {i+1}': st.session_state['pattern_color_names'][pattern_id][i] for i in range(len(all_colors))}
-                names_df = pd.DataFrame([names_dict])
-                
-                # data_editor로 편집 가능하게
-                edited_names_df = st.data_editor(
-                    names_df,
-                    use_container_width=True,
-                    hide_index=True,
-                    key=f"name_editor_{pattern_id}",
-                    column_config={
-                        col: st.column_config.TextColumn(
-                            col,
-                            width="medium",
-                            help=f"Edit name for {col}"
-                        ) for col in names_df.columns
-                    }
-                )
-                
-                # 편집된 이름 저장
-                new_names = [edited_names_df.iloc[0][col] for col in edited_names_df.columns]
-                st.session_state['pattern_color_names'][pattern_id] = new_names
-                
-                st.write("---")
-                
-                # CSV 생성 (편집된 이름 사용)
-                final_names = st.session_state['pattern_color_names'][pattern_id]
-                color_columns = {final_names[i]: all_colors[i] for i in range(len(all_colors))}
-                pattern_df = pd.DataFrame([color_columns])
-                
-                csv_buf = io.StringIO()
-                pattern_df.to_csv(csv_buf, index=False)
-                csv_value = csv_buf.getvalue()
-                
-                st.download_button(
-                    'Download pattern colors CSV', 
-                    data=csv_value, 
-                    file_name=f'pattern_{pattern_type}_colors.csv', 
-                    mime='text/csv'
-                )
-                
-                st.write("**Preview CSV:**")
-                st.dataframe(pattern_df, use_container_width=True)
+        # 🆕 저장된 패턴이 있으면 표시
+        pattern_session_key = f"generated_pattern_{chosen_index}"
+        if pattern_session_key in st.session_state:
+            pattern_data = st.session_state[pattern_session_key]
+            
+            st.image(pattern_data['image'], caption=f"Generated {pattern_data['pattern_type'].title()} Pattern (30x30)", use_column_width=True)
 
+            st.download_button(
+                "Download pattern image", 
+                data=pattern_data['image'], 
+                file_name=f"pattern_{pattern_data['pattern_type']}.png", 
+                mime="image/png"
+            )
+
+            st.write("---")
+            st.write("**Pattern Colors Used:**")
+            
+            all_colors = pattern_data['colors']
+            
+            # 색상 이름 세션 관리
+            pattern_id = f"pattern_{chosen_index}_{pattern_data['pattern_type']}"
+            
+            if 'pattern_color_names' not in st.session_state:
+                st.session_state['pattern_color_names'] = {}
+            
+            if pattern_id not in st.session_state['pattern_color_names']:
+                st.session_state['pattern_color_names'][pattern_id] = [f'Color{i+1}' for i in range(len(all_colors))]
+            
+            # 색상 개수 동기화
+            if len(st.session_state['pattern_color_names'][pattern_id]) != len(all_colors):
+                if len(st.session_state['pattern_color_names'][pattern_id]) < len(all_colors):
+                    for i in range(len(st.session_state['pattern_color_names'][pattern_id]), len(all_colors)):
+                        st.session_state['pattern_color_names'][pattern_id].append(f'Color{i+1}')
+                else:
+                    st.session_state['pattern_color_names'][pattern_id] = st.session_state['pattern_color_names'][pattern_id][:len(all_colors)]
+            
+            # 색상 프리뷰
+            color_preview_cols = st.columns(len(all_colors))
+            for idx, (col, color) in enumerate(zip(color_preview_cols, all_colors)):
+                col.markdown(f"<div style='background:{color};padding:28px;border-radius:6px;border:1px solid #ddd'></div>", unsafe_allow_html=True)
+                col.write(color)
+            
+            st.write("**Edit Color Names:**")
+            st.write("Double-click on a name cell to edit it. Changes save automatically.")
+            
+            # DataFrame으로 색상 이름 편집
+            import pandas as pd
+            
+            names_dict = {f'Column {i+1}': st.session_state['pattern_color_names'][pattern_id][i] for i in range(len(all_colors))}
+            names_df = pd.DataFrame([names_dict])
+            
+            edited_names_df = st.data_editor(
+                names_df,
+                use_container_width=True,
+                hide_index=True,
+                key=f"name_editor_{pattern_id}",
+                disabled=False
+            )
+            
+            # 편집된 이름 저장
+            new_names = [edited_names_df.iloc[0][col] for col in edited_names_df.columns]
+            st.session_state['pattern_color_names'][pattern_id] = new_names
+            
+            st.write("---")
+            
+            # CSV 생성
+            final_names = st.session_state['pattern_color_names'][pattern_id]
+            color_columns = {final_names[i]: all_colors[i] for i in range(len(all_colors))}
+            pattern_df = pd.DataFrame([color_columns])
+            
+            csv_buf = io.StringIO()
+            pattern_df.to_csv(csv_buf, index=False)
+            csv_value = csv_buf.getvalue()
+            
+            st.download_button(
+                'Download pattern colors CSV', 
+                data=csv_value, 
+                file_name=f"pattern_{pattern_data['pattern_type']}_colors.csv", 
+                mime='text/csv'
+            )
+            
+            st.write("**Preview CSV:**")
+            st.dataframe(pattern_df, use_container_width=True)
                 
 # ---------------- Tab 3: Animal pattern design helper ----------------
 with tabs[2]:
