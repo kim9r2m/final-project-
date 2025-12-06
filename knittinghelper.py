@@ -838,6 +838,19 @@ with tabs[1]:
                             x0, y0 = col*cell_size, row*cell_size
                             x1, y1 = x0+cell_size, y0+cell_size
                             draw.rectangle([x0,y0,x1,y1], fill=row_color)
+                            
+                elif pattern_type == "random":
+                    total_cells = grid_size * grid_size
+                    shuffled_colors = colors_list * (total_cells // len(colors_list) + 1)
+                    random.shuffle(shuffled_colors)
+                    idx = 0
+                    for row in range(grid_size):
+                        for col in range(grid_size):
+                            x0, y0 = col*cell_size, row*cell_size
+                            x1, y1 = x0+cell_size, y0+cell_size
+                            cell_color = shuffled_colors[idx]
+                            draw.rectangle([x0,y0,x1,y1], fill=cell_color)
+                            idx += 1
 
                 elif pattern_type in ["heart", "star", "circle"]:
                     if pattern_type == "heart":
@@ -926,7 +939,7 @@ with tabs[1]:
         if pattern_session_key in st.session_state:
             pattern_data = st.session_state[pattern_session_key]
             
-            st.image(pattern_data['image'], caption=f"Generated {pattern_data['pattern_type'].title()} Pattern (30x30)", use_column_width=True)
+            st.image(pattern_data['image'], caption=f"Generated {pattern_data['pattern_type'].title()} Pattern (29x29)", use_column_width=True)
 
             st.download_button(
                 "Download pattern image", 
