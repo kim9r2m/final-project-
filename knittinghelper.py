@@ -1094,6 +1094,22 @@ with tabs[2]:
     if selected_url:
         st.markdown(f"**Selected image (index {selected_index}):** {selected_url}")
         st.image(selected_url, width=360)
+        # 🆕 이미지 비율 표시
+        try:
+            r = requests.get(selected_url, timeout=10)
+            r.raise_for_status()
+            temp_img = Image.open(io.BytesIO(r.content))
+            img_width, img_height = temp_img.size
+        
+            # 최대공약수로 비율 간단하게 만들기
+            from math import gcd
+            divisor = gcd(img_width, img_height)
+            ratio_w = img_width // divisor
+            ratio_h = img_height // divisor
+        
+            st.info(f"📐 Image ratio: **{ratio_w}x{ratio_h}** (Original size: {img_width}x{img_height}px)")
+        except Exception as e:
+            st.warning(f"Could not load image ratio: {e}")
 
         # pixel options
         px_input = st.text_input('Pixel size (width x height)', value='40x40')
