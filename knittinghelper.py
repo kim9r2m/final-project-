@@ -792,7 +792,7 @@ with tabs[1]:
             from PIL import Image, ImageDraw
             import random
 
-            grid_size = 30
+            grid_size = 29
             cell_size = 20
             colors_list = st.session_state[palette_key]
             
