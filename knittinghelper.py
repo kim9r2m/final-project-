@@ -485,7 +485,7 @@ def extract_palette_from_image(img: Image.Image, n_colors=8):
     return palette
 
 # Convert to pixel pattern (resized to target size then simplified colors)
-def convert_to_pixel_pattern_from_image(img: Image.Image, pixel_w: int, pixel_h: int, n_colors: int, enhance_edges: bool = False):
+def convert_to_pixel_pattern_from_image(img: Image.Image, pixel_w: int, pixel_h: int, n_colors: int, color_mode: str = "color", enhance_edges: bool = False):
     """
     이미지를 픽셀 패턴으로 변환
     
@@ -494,6 +494,7 @@ def convert_to_pixel_pattern_from_image(img: Image.Image, pixel_w: int, pixel_h:
         pixel_w: 패턴 너비
         pixel_h: 패턴 높이
         n_colors: 색상 개수
+        color_mode: "color" 또는 "achromatic"
         enhance_edges: True면 윤곽선 강조 모드
     """
     from PIL import ImageFilter, ImageEnhance
@@ -513,7 +514,11 @@ def convert_to_pixel_pattern_from_image(img: Image.Image, pixel_w: int, pixel_h:
         
         # 3. 엣지 강조 필터
         img = img.filter(ImageFilter.EDGE_ENHANCE_MORE)
-    
+
+    # 🆕 흑백 모드 처리
+    if color_mode == "achromatic":
+        img = img.convert('L').convert('RGB')  # 그레이스케일로 변환 후 RGB로
+        
     # 크기 조정
     small = img.resize((pixel_w, pixel_h), resample=Image.BILINEAR)
     
