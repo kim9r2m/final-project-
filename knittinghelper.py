@@ -1165,15 +1165,31 @@ with tabs[2]:
 with tabs[3]:
     st.header('Convert image to pattern')
     st.write('Upload an image and convert it into a pixelated knitting/crochet pattern. Preview and download CSV of palette.')
-
     uploaded = st.file_uploader('Upload an image', type=['png','jpg','jpeg'])
+    
+    # 🆕 업로드된 이미지 비율 표시
+    if uploaded:
+        try:
+            temp_img = Image.open(uploaded)
+            img_width, img_height = temp_img.size
+            
+            # 최대공약수로 비율 간단하게 만들기
+            from math import gcd
+            divisor = gcd(img_width, img_height)
+            ratio_w = img_width // divisor
+            ratio_h = img_height // divisor
+            
+            st.info(f"📐 Image ratio: **{ratio_w}x{ratio_h}** (Original size: {img_width}x{img_height}px)")
+            st.image(uploaded, width=360, caption="Uploaded image")
+        except Exception as e:
+            st.warning(f"Could not load image ratio: {e}")
+    
     px_input = st.text_input('Pixel size (width x height)', value='40x40', key='conv_px')
     try:
         pw, ph = map(int, px_input.lower().split('x'))
     except Exception:
         pw = ph = 40
     n_colors = st.slider('Number of colors (simplify)', min_value=2, max_value=30, value=10, key='conv_colors')
-
     # 🆕 윤곽선 강조 옵션
     enhance_edges = st.checkbox('✨ Enhance edges (clearer shapes)', value=False, key='conv_enhance', help="Makes the pattern shapes more distinct")
     
@@ -1183,18 +1199,15 @@ with tabs[3]:
         index=0,
         key="convert_color_mode"
     )
-
     if uploaded and st.button('Generate pattern'):
         try:
             img = Image.open(uploaded).convert('RGB')
             poster, palette = convert_to_pixel_pattern_from_image(img, pw, ph, n_colors, color_mode, enhance_edges)
             st.image(poster, caption=f'{pw}x{ph} pixel pattern')
-
             buf = io.BytesIO()
             poster.save(buf, format='PNG')
             buf.seek(0)
             st.download_button('Download pattern PNG', data=buf.getvalue(), file_name='custom_pattern.png', mime='image/png')
-
             header = ['R','G','B','Hex']
             csv_buf = io.StringIO()
             writer = csv.writer(csv_buf)
@@ -1205,11 +1218,8 @@ with tabs[3]:
                 rows.append({'R':c[0],'G':c[1],'B':c[2],'Hex':c[3]})
             csv_val = csv_buf.getvalue()
             st.download_button('Download palette CSV', data=csv_val, file_name='custom_palette.csv', mime='text/csv')
-
             import pandas as pd
             df = pd.DataFrame(rows)
             st.dataframe(df)
-
         except Exception as e:
             st.error(f'Error generating pattern: {e}')
-
