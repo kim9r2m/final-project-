@@ -11,6 +11,33 @@ This application provides comprehensive tools for knitting and crochet enthusias
 - Custom image to pattern conversion
 - CSV export for all color palettes and patterns
 
+## 🔄 Application Flow
+```mermaid
+graph TD
+    A[User Input] --> B[Tab1: AI Helper]
+    A --> C[Tab2: Color Helper]
+    A --> D[Tab3: Animal Pattern]
+    A --> E[Tab4: Convert Image to Pattern]
+    
+    B --> B1[OpenAI ChatCompletion]
+    B1 --> B2[Response]
+    
+    C --> C1[HF API analysis]
+    C --> C2[Semantic dictionary matching]
+    C --> C3[HSV palette generation]
+    C3 --> C4[CSV download]
+    
+    D --> D1[Fetch external animal images]
+    D --> D2[Extract palette - KMeans]
+    D --> D3[Generate pixel pattern]
+    D3 --> D4[CSV download]
+    
+    E --> E1[File upload]
+    E --> E2[Extract palette]
+    E --> E3[Render pixel pattern]
+    E3 --> E4[CSV download]
+```
+
 ## 🚀 Features
 
 ### 🤖 Tab 1: AI Helper
@@ -263,21 +290,10 @@ pandas
 
 ---
 
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
----
-
-## 📄 License
-
-[Your License Here]
-
----
 
 ## 👤 Author
 
-[Your Name/Organization]
+[Gyurim Kim /Sungkyunkwan University]
 
 ---
 
