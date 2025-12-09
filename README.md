@@ -31,7 +31,7 @@ flowchart TD
     E --> E2[Extract palette]
     E --> E3[Render pixel pattern]
     E --> E4[CSV download]
-
+'''
 ## 📋 Overview
 
 This application provides comprehensive tools for knitting and crochet enthusiasts, featuring:
