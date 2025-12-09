@@ -1199,7 +1199,8 @@ with tabs[3]:
         index=0,
         key="convert_color_mode"
     )
-    if uploaded and st.button('Generate pattern'):
+    # 🔧 key 추가!
+    if uploaded and st.button('Generate pattern', key='generate_pattern_btn'):
         try:
             img = Image.open(uploaded).convert('RGB')
             poster, palette = convert_to_pixel_pattern_from_image(img, pw, ph, n_colors, color_mode, enhance_edges)
